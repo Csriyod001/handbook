@@ -1,0 +1,79 @@
+# ==============================================================================
+# Module 5 (M5): Prometheus SLO Burn-Rate & vLLM V1 Saturation Alert Rules
+# Namespace: monitoring
+# ==============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ai-platform-vllm-v1-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+    app: ai-platform-sre
+spec:
+  groups:
+    - name: vllm_v1_serving_slo.rules
+      interval: 15s
+      rules:
+        - alert: VLLMKVCacheSaturationWarning
+          expr: avg(vllm:kv_cache_usage_perc) > 0.85
+          for: 2m
+          labels:
+            severity: warning
+            runbook_id: RB-AI-005
+          annotations:
+            summary: "vLLM V1 KV-Cache pool utilization exceeds 85%"
+            description: "Average vllm:kv_cache_usage_perc is {{ $value | humanizePercentage }}. Verify KEDA ScaledObject scale-out or shed batch traffic."
+
+        - alert: VLLMPreemptionThrashingCritical
+          expr: sum(rate(vllm:num_preemptions_total[5m])) > 0
+          for: 1m
+          labels:
+            severity: critical
+            runbook_id: RB-AI-005
+          annotations:
+            summary: "vLLM V1 RECOMPUTE preemption thrashing detected"
+            description: "Sequences are being evicted from KV-Cache and recomputed ({{ $value }} preemptions/s). Immediate action required per RB-AI-005."
+
+        - alert: VLLMHighTTFTBurnRateCritical
+          expr: |
+            (
+              (1 - (sum(rate(vllm:time_to_first_token_seconds_bucket{le="0.75"}[5m])) / clamp_min(sum(rate(vllm:time_to_first_token_seconds_bucket{le="+Inf"}[5m])), 1e-9))) > (14.4 * 0.001)
+              and
+              (1 - (sum(rate(vllm:time_to_first_token_seconds_bucket{le="0.75"}[1h])) / clamp_min(sum(rate(vllm:time_to_first_token_seconds_bucket{le="+Inf"}[1h])), 1e-9))) > (14.4 * 0.001)
+            )
+            and sum(rate(vllm:time_to_first_token_seconds_bucket{le="+Inf"}[5m])) > 0
+          for: 2m
+          labels:
+            severity: critical
+            runbook_id: RB-AI-005
+          annotations:
+            summary: "p95/Multi-Window TTFT SLO Burn Rate (14.4x on 99.9% SLO) exceeded in 5m & 1h windows"
+            description: "More than 1.44% of requests breached 750ms TTFT bucket (guardrail for <800ms SLA) across both 5m and 1h burn windows ({{ $value | humanizePercentage }}). Page on-call immediately per RB-AI-005."
+
+        - alert: VLLMHighITLWarning
+          expr: |
+            (
+              histogram_quantile(0.95, sum(rate(vllm:inter_token_latency_seconds_bucket[5m])) by (le))
+              or
+              histogram_quantile(0.95, sum(rate(vllm:time_per_output_token_seconds_bucket[5m])) by (le))
+            ) > 0.030
+          for: 3m
+          labels:
+            severity: warning
+            runbook_id: RB-AI-005
+          annotations:
+            summary: "vLLM V1 p95 Inter-Token Latency (ITL) exceeds 30ms target"
+            description: "Token streaming p95 ITL reached {{ $value }}s (> 0.030s). Check DCGM DRAM bandwidth saturation or active batch size."
+
+        - alert: VLLMPrefixCacheHitDropWarning
+          expr: |
+            (sum(rate(vllm:prefix_cache_hits_total[5m])) / clamp_min(sum(rate(vllm:prefix_cache_queries_total[5m])), 1e-9)) < 0.50
+            and sum(rate(vllm:prefix_cache_queries_total[5m])) > 0
+          for: 5m
+          labels:
+            severity: warning
+            runbook_id: RB-AI-005
+          annotations:
+            summary: "Automatic Prefix Cache (APC) hit rate dropped below 50%"
+            description: "Check whether dynamic timestamps or UUIDs were prepended to the shared System Prompt."

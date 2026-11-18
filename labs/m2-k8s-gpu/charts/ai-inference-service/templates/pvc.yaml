@@ -1,0 +1,18 @@
+{{- if and .Values.modelCache.enabled .Values.modelCache.createPvc }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.modelCache.pvcName }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  accessModes:
+    - {{ .Values.modelCache.accessMode | default "ReadWriteOnce" }}
+  {{- if .Values.modelCache.storageClassName }}
+  storageClassName: {{ .Values.modelCache.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.modelCache.storageSize }}
+{{- end }}

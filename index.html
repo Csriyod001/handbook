@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Infrastructure &amp; Platform Engineering Handbook</title>
+  <meta name="description" content="AI Infrastructure &amp; Platform Engineering Interactive Handbook and Offline Reading Portal" />
+  <meta http-equiv="refresh" content="0; url=dist/AI_Infra_Interactive_Handbook.html" />
+  <script>
+    (function() {
+      var target = "dist/AI_Infra_Interactive_Handbook.html" + window.location.search + window.location.hash;
+      window.location.replace(target);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1120;
+      --fg: #f1f5f9;
+      --card: #111827;
+      --border: #334155;
+      --muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --btn-fg: #0b1120;
+      --secondary-bg: #1e293b;
+      --secondary-fg: #e2e8f0;
+      --secondary-hover: #334155;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        color-scheme: light;
+        --bg: #f8fafc;
+        --fg: #0f172a;
+        --card: #ffffff;
+        --border: #cbd5e1;
+        --muted: #475569;
+        --primary: #0284c7;
+        --primary-hover: #0369a1;
+        --btn-fg: #ffffff;
+        --secondary-bg: #f1f5f9;
+        --secondary-fg: #0f172a;
+        --secondary-hover: #e2e8f0;
+      }
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif;
+      background-color: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .container {
+      max-width: 38rem;
+      width: 100%;
+      background-color: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background-color: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.01em;
+    }
+    p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (min-width: 480px) {
+      .actions {
+        flex-direction: row;
+      }
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+      text-align: center;
+    }
+    .btn-primary {
+      background-color: var(--primary);
+      color: var(--btn-fg);
+    }
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+    .btn-secondary {
+      background-color: var(--secondary-bg);
+      color: var(--secondary-fg);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover {
+      background-color: var(--secondary-hover);
+    }
+    .links {
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .links a {
+      color: var(--muted);
+      text-decoration: underline;
+    }
+    .links a:hover {
+      color: var(--fg);
+    }
+    .code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.85em;
+    }
+    .noscript-alert {
+      background-color: rgba(234, 179, 8, 0.1);
+      border: 1px solid rgba(234, 179, 8, 0.3);
+      color: #facc15;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">AI Platform Engineering • 12-Week Roadmap</div>
+    <h1>AI Infrastructure &amp; Platform Engineering Handbook</h1>
+    <p>
+      กำลังนำคุณเข้าสู่คู่มือปฏิบัติการฉบับโต้ตอบ (Interactive Handbook &amp; Assessment Portal)...
+      หากเบราว์เซอร์ไม่นำทางโดยอัตโนมัติ กรุณากดปุ่มด้านล่างเพื่อเริ่มใช้งาน
+    </p>
+
+    <noscript>
+      <div class="noscript-alert">
+        JavaScript ถูกปิดใช้งานในเบราว์เซอร์ของคุณ คุณยังสามารถเข้าสู่เว็บพอร์ทัลหรือเลือกอ่านเนื้อหาฉบับเต็มผ่าน Markdown ได้โดยตรง
+      </div>
+    </noscript>
+
+    <div class="actions">
+      <a href="dist/AI_Infra_Interactive_Handbook.html" class="btn btn-primary">
+        เปิด Interactive Handbook &rarr;
+      </a>
+      <a href="dist/FULL_MANUSCRIPT.md" class="btn btn-secondary">
+        อ่าน FULL_MANUSCRIPT.md
+      </a>
+    </div>
+
+    <div class="links">
+      <span>เอกสารอ้างอิง:</span>
+      <a href="README.md" class="code">README.md</a>
+      <a href="SPEC_AND_STYLE_GUIDE.md" class="code">SPEC_AND_STYLE_GUIDE.md</a>
+    </div>
+  </div>
+</body>
+</html>

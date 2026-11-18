@@ -1,0 +1,40 @@
+# ==============================================================================
+# Module 6 (M6 Capstone): Project SiamShield AI — Master Makefile (DoD #2)
+# Connects IaC (M1), Helm/K8s (M2), vLLM V1 (M3), Gateway (M4), and KEDA/SRE (M5)
+# ==============================================================================
+SHELL := /bin/bash
+CLUSTER_NAME := ai-platform-local
+K8S_NAMESPACE := ai-platform
+HOST_HF_CACHE := /tmp/ai-infra-hf-cache
+VERIFY_MODE ?= static
+VERIFY_TARGET ?= examples
+
+.DEFAULT_GOAL := verify
+
+.PHONY: help init-cache build-images create-secrets simulate deploy-k8s verify verify-workspace
+
+help: ## แสดงคำสั่งทั้งหมดของโปรเจกต์จบ Project SiamShield AI
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
+
+init-cache: ## เตรียมโฟลเดอร์แคชสำหรับ HF_HOME (/tmp/ai-infra-hf-cache -> /cache/huggingface)
+	@mkdir -p $(HOST_HF_CACHE)
+
+build-images: ## สร้างและโหลดอิมเมจ mock-vllm-server:1.0.0 สำหรับโหมด Local kind
+	docker build -t mock-vllm-server:1.0.0 -f ../m4-gateway/mock_vllm_server/Dockerfile ../m4-gateway
+	kind load docker-image mock-vllm-server:1.0.0 --name $(CLUSTER_NAME)
+
+create-secrets: ## สร้าง Kubernetes Secret litellm-secrets จากไฟล์ .env (อย่า hardcode ใน Git)
+	@test -f ../m4-gateway/.env || (echo "Copy ../m4-gateway/.env.example to ../m4-gateway/.env first" && exit 1)
+	kubectl create secret generic litellm-secrets -n $(K8S_NAMESPACE) --from-env-file=../m4-gateway/.env --dry-run=client -o yaml | kubectl apply -f -
+
+simulate: init-cache ## รันเอ็นจินจำลอง Two-Tier Platform & Chaos Verification
+	@python3 src/siamshield_simulator.py
+
+deploy-k8s: init-cache ## ดีพลอยสแต็ก SiamShield AI ทั้งหมดลงคลัสเตอร์ Kubernetes (ai-platform)
+	kubectl apply -f k8s/siamshield-platform.yaml
+
+verify: init-cache ## รันสคริปต์ตรวจประเมิน (examples sample หรือ workspace ของผู้เรียน)
+	@VERIFY_MODE=$(VERIFY_MODE) bash verify_capstone.sh --target $(VERIFY_TARGET)
+
+verify-workspace: init-cache ## ตรวจคำตอบจริงของผู้เรียน (บังคับ zero <TODO> และผ่านเกณฑ์ SLA)
+	@VERIFY_MODE=$(VERIFY_MODE) bash verify_capstone.sh --target workspace

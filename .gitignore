@@ -1,0 +1,27 @@
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# OpenTofu / Terraform local state & provider binaries
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform.lock.hcl
+*.tfvars
+
+# Secrets & Local Env
+.env
+*.pem
+*.key
+
+# OS & Editor files
+.DS_Store
+*.swp
+
+# Internal agent orchestration logs/state & generated binary archives
+.agents/
+dist/*.tar.gz
+dist/*.zip

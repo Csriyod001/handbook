@@ -1,0 +1,808 @@
+# ==============================================================================
+# Module 4 (M4): Kubernetes AI Gateway Stack & Inference Extension Manifests
+# Namespace: ai-platform
+# Includes:
+#   - vllm-primary-svc:8000 & vllm-secondary-svc:8000 (mock_vllm_server <80MB RAM)
+#   - redis-svc:6379 & postgres-svc:5432
+#   - litellm-gateway-svc:4000
+#   - Gateway API Inference Extension CRDs: InferencePool & InferenceModel
+# ==============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-platform
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-primary
+  namespace: ai-platform
+  labels:
+    app: vllm-serving
+    role: primary
+    inference-pool: vllm-qwen-pool
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-serving
+      role: primary
+  template:
+    metadata:
+      labels:
+        app: vllm-serving
+        role: primary
+        inference-pool: vllm-qwen-pool
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: mock-vllm
+          image: mock-vllm-server:1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: SERVER_ID
+              value: "vllm-primary-svc"
+            - name: MODEL_NAME
+              value: "mock-qwen2.5-7b"
+            - name: HF_HOME
+              value: "/cache/huggingface"
+            - name: VLLM_CACHE_ROOT
+              value: "/tmp/vllm-cache"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8000
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
+      volumes:
+        - name: tmp-dir
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-primary-svc
+  namespace: ai-platform
+  labels:
+    app: vllm-serving
+    role: primary
+spec:
+  selector:
+    app: vllm-serving
+    role: primary
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-secondary
+  namespace: ai-platform
+  labels:
+    app: vllm-serving
+    role: secondary
+    # Warm standby isolated from active primary InferencePool; LiteLLM routes via fallback
+    inference-pool: vllm-qwen-pool-secondary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-serving
+      role: secondary
+  template:
+    metadata:
+      labels:
+        app: vllm-serving
+        role: secondary
+        inference-pool: vllm-qwen-pool-secondary
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: mock-vllm
+          image: mock-vllm-server:1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: SERVER_ID
+              value: "vllm-secondary-svc"
+            - name: MODEL_NAME
+              value: "mock-qwen2.5-7b"
+            - name: HF_HOME
+              value: "/cache/huggingface"
+            - name: VLLM_CACHE_ROOT
+              value: "/tmp/vllm-cache"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8000
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
+      volumes:
+        - name: tmp-dir
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-secondary-svc
+  namespace: ai-platform
+  labels:
+    app: vllm-serving
+    role: secondary
+spec:
+  selector:
+    app: vllm-serving
+    role: secondary
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: ai-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-svc
+  namespace: ai-platform
+spec:
+  selector:
+    app: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data-pvc
+  namespace: ai-platform
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: ai-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: "litellm"
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "litellm", "-d", "litellm"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "litellm", "-d", "litellm"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-svc
+  namespace: ai-platform
+spec:
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+# Prerequisite: Provision `litellm-secrets` out-of-band before applying this manifest
+# (never commit production passwords/keys to Git — see `labs/m4-gateway/.env.example`):
+#   kubectl create secret generic litellm-secrets -n ai-platform \
+#     --from-env-file=labs/m4-gateway/.env
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: ai-platform
+data:
+  litellm_config.yaml: |
+    model_list:
+      - model_name: qwen2.5-7b
+        litellm_params:
+          model: openai/Qwen/Qwen2.5-7B-Instruct-AWQ
+          api_base: http://vllm-primary-svc.ai-platform.svc.cluster.local:8000/v1
+          api_key: "os.environ/VLLM_API_KEY"
+          rpm: 120
+          tpm: 250000
+          timeout: 10.0
+          stream_timeout: 3.0
+        model_info:
+          id: "primary-vllm-pool"
+          tier: "production-primary"
+      - model_name: qwen2.5-7b-secondary
+        litellm_params:
+          model: openai/Qwen/Qwen2.5-7B-Instruct-AWQ
+          api_base: http://vllm-secondary-svc.ai-platform.svc.cluster.local:8000/v1
+          api_key: "os.environ/VLLM_API_KEY"
+          rpm: 120
+          tpm: 250000
+          timeout: 10.0
+          stream_timeout: 3.0
+        model_info:
+          id: "secondary-vllm-pool"
+          tier: "production-fallback"
+      - model_name: qwen2.5-7b-batch
+        litellm_params:
+          model: openai/Qwen/Qwen2.5-7B-Instruct-AWQ
+          api_base: http://vllm-primary-svc.ai-platform.svc.cluster.local:8000/v1
+          api_key: "os.environ/VLLM_API_KEY"
+          rpm: 10
+          tpm: 25000
+          timeout: 10.0
+          stream_timeout: 3.0
+        model_info:
+          id: "batch-vllm-pool"
+          tier: "batch-throttled"
+    router_settings:
+      routing_strategy: "least-busy"
+      num_retries: 0
+      timeout: 10.0
+      stream_timeout: 3.0
+      allowed_fails: 3
+      cooldown_time: 30
+      fallbacks:
+        - {"qwen2.5-7b": ["qwen2.5-7b-secondary"]}
+        - {"qwen2.5-7b-batch": ["qwen2.5-7b-secondary"]}
+      redis_host: "redis-svc.ai-platform.svc.cluster.local"
+      redis_port: 6379
+    litellm_settings:
+      drop_params: true
+      cache: true
+      cache_params:
+        type: "redis"
+        host: "redis-svc.ai-platform.svc.cluster.local"
+        port: 6379
+        ttl: 600
+      success_callback: ["prometheus"]
+      failure_callback: ["prometheus"]
+      callbacks: ["pdpa_guardrail.proxy_handler_instance"]
+    general_settings:
+      master_key: "os.environ/LITELLM_MASTER_KEY"
+      database_url: "os.environ/DATABASE_URL"
+      store_model_in_db: true
+      require_auth_for_metrics_endpoint: false
+  pdpa_guardrail.py: |
+    """
+    LiteLLM Proxy Pre-Call PDPA Guardrail Callback (`pdpa_guardrail.py`)
+    =====================================================================
+    Single Source of Truth for Thai PDPA PII masking:
+      - 13-digit Thai National IDs (formatted or contiguous) -> <THAI_ID_REDACTED>
+      - 10-digit Thai mobile phone numbers (06x/08x/09x) -> <THAI_PHONE_REDACTED>
+      - Modulo-11 checksum validation helper (`validate_thai_id_checksum`)
+
+    Runs standalone inside Kubernetes LiteLLM Proxy (`/app/pdpa_guardrail.py` mounted via ConfigMap)
+    via `litellm_settings.callbacks: ["pdpa_guardrail.proxy_handler_instance"]`, and is also imported
+    by `mock_vllm_server.app` for zero-duplication resilience testing.
+    """
+
+    from __future__ import annotations
+
+    import re
+    from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+
+    try:
+        from litellm.integrations.custom_logger import CustomLogger  # type: ignore
+    except ImportError:  # Standalone mode when running offline unit tests without litellm
+
+        class CustomLogger:  # type: ignore[no-redef]
+            """Minimal stub mirroring litellm.integrations.custom_logger.CustomLogger."""
+
+
+    class PDPAPIIMasker:
+        """
+        Pre-call PDPA Guardrail aligned with OWASP Top 10 for LLM Applications (2025):
+          - LLM02:2025 Sensitive Information Disclosure
+          - Redacts 13-digit Thai National IDs (formatted or unformatted) -> <THAI_ID_REDACTED>
+          - Redacts 10-digit Thai mobile phone numbers -> <THAI_PHONE_REDACTED>
+        """
+
+        THAI_ID_PATTERN = re.compile(
+            r"\b[1-8](?:[-\s]?\d{4}[-\s]?\d{5}[-\s]?\d{2}[-\s]?\d|\d{12})\b"
+        )
+        THAI_PHONE_PATTERN = re.compile(
+            r"(?<![\d.])(?:0|\+?66[-\s]?)[689]\d[-\s]?\d{3}[-\s]?\d{4}(?!\d)"
+        )
+
+        @staticmethod
+        def validate_thai_id_checksum(digits_only: str) -> bool:
+            """
+            Verifies the Modulo-11 check digit (13th digit) of a Thai National ID:
+              S = sum(d_i * (14 - i) for i in 1..12)
+              check_digit = (11 - (S % 11)) % 10
+            """
+            clean = re.sub(r"\D", "", digits_only)
+            if len(clean) != 13 or clean[0] in ("0", "9"):
+                return False
+            total = sum(int(clean[i]) * (13 - i) for i in range(12))
+            check_digit = (11 - (total % 11)) % 10
+            return check_digit == int(clean[12])
+
+        @classmethod
+        def mask_text(cls, text: str, strict_checksum: bool = False) -> Tuple[str, int]:
+            """Returns (masked_text, redaction_count).
+
+            When strict_checksum=True, only 13-digit matches passing the Thai Modulo-11
+            check digit are redacted (reducing false positives on bank/order IDs).
+            When strict_checksum=False (default fail-safe mode), all structural matches
+            are redacted to protect typoed customer IDs under PDPA.
+            """
+            redactions = 0
+
+            def _replace_id(match: re.Match[str]) -> str:
+                nonlocal redactions
+                candidate = match.group(0)
+                if strict_checksum and not cls.validate_thai_id_checksum(candidate):
+                    return candidate
+                redactions += 1
+                return "<THAI_ID_REDACTED>"
+
+            def _replace_phone(match: re.Match[str]) -> str:
+                nonlocal redactions
+                redactions += 1
+                return "<THAI_PHONE_REDACTED>"
+
+            masked = cls.THAI_ID_PATTERN.sub(_replace_id, text)
+            masked = cls.THAI_PHONE_PATTERN.sub(_replace_phone, masked)
+            return masked, redactions
+
+        @classmethod
+        def mask_messages(
+            cls,
+            messages: List[Dict[str, Any]],
+            strict_checksum: bool = False,
+        ) -> Tuple[List[Dict[str, Any]], int]:
+            """Returns deep-copied messages with string and multimodal text PII masked."""
+            total_redactions = 0
+            sanitized: List[Dict[str, Any]] = []
+            for msg in messages:
+                if not isinstance(msg, dict):
+                    sanitized.append(msg)
+                    continue
+                content = msg.get("content")
+                if content is None:
+                    sanitized.append({**msg, "content": None})
+                elif isinstance(content, str):
+                    masked_content, count = cls.mask_text(content, strict_checksum=strict_checksum)
+                    total_redactions += count
+                    sanitized.append({**msg, "content": masked_content})
+                elif isinstance(content, list):
+                    masked_parts: List[Any] = []
+                    for part in content:
+                        if (
+                            isinstance(part, dict)
+                            and part.get("type") == "text"
+                            and isinstance(part.get("text"), str)
+                        ):
+                            masked_text, count = cls.mask_text(
+                                part["text"], strict_checksum=strict_checksum
+                            )
+                            total_redactions += count
+                            masked_parts.append({**part, "text": masked_text})
+                        else:
+                            masked_parts.append(part)
+                    sanitized.append({**msg, "content": masked_parts})
+                else:
+                    masked_content, count = cls.mask_text(
+                        str(content), strict_checksum=strict_checksum
+                    )
+                    total_redactions += count
+                    sanitized.append({**msg, "content": masked_content})
+            return sanitized, total_redactions
+
+
+    class PDPACustomGuardrail(CustomLogger):
+        """Self-contained PDPA PII masking guardrail executing in LiteLLM pre-call phase."""
+
+        async def async_pre_call_hook(
+            self,
+            user_api_key_dict: Any,
+            cache: Any,
+            data: Dict[str, Any],
+            call_type: Literal[
+                "completion",
+                "text_completion",
+                "embeddings",
+                "image_generation",
+                "moderation",
+                "audio_transcription",
+                "pass_through_endpoint",
+                "rerank",
+            ],
+            **kwargs: Any,
+        ) -> Optional[Union[Exception, str, Dict[str, Any]]]:
+            """Masks Thai PII across chat `messages` or `prompt` before cache lookup or backend dispatch."""
+            messages = data.get("messages")
+            redactions = 0
+            if isinstance(messages, list):
+                sanitized_messages, redactions = PDPAPIIMasker.mask_messages(messages)
+                data["messages"] = sanitized_messages
+            elif isinstance(data.get("prompt"), str):
+                sanitized_prompt, redactions = PDPAPIIMasker.mask_text(data["prompt"])
+                data["prompt"] = sanitized_prompt
+
+            metadata = data.setdefault("metadata", {})
+            if isinstance(metadata, dict):
+                metadata["pdpa_redactions"] = redactions
+            return data
+
+
+    proxy_handler_instance = PDPACustomGuardrail()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm-gateway
+  namespace: ai-platform
+  labels:
+    app: litellm-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: litellm-gateway
+  template:
+    metadata:
+      labels:
+        app: litellm-gateway
+    spec:
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:main-v1.55.0
+          args:
+            - "--config"
+            - "/etc/litellm/litellm_config.yaml"
+            - "--port"
+            - "4000"
+          ports:
+            - containerPort: 4000
+              name: http
+          env:
+            - name: PYTHONPATH
+              value: "/app"
+          envFrom:
+            - secretRef:
+                name: litellm-secrets
+          livenessProbe:
+            httpGet:
+              path: /health/liveliness
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          volumeMounts:
+            - name: litellm-config-vol
+              mountPath: /etc/litellm/litellm_config.yaml
+              subPath: litellm_config.yaml
+              readOnly: true
+            - name: litellm-config-vol
+              mountPath: /app/pdpa_guardrail.py
+              subPath: pdpa_guardrail.py
+              readOnly: true
+            - name: tmp-dir
+              mountPath: /tmp
+      volumes:
+        - name: litellm-config-vol
+          configMap:
+            name: litellm-config
+        - name: tmp-dir
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm-gateway-svc
+  namespace: ai-platform
+  labels:
+    app: litellm-gateway
+spec:
+  selector:
+    app: litellm-gateway
+  ports:
+    - name: http
+      port: 4000
+      targetPort: 4000
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: litellm-init-virtual-keys
+  namespace: ai-platform
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: seed-virtual-keys
+          image: curlimages/curl:8.10.1
+          envFrom:
+            - secretRef:
+                name: litellm-secrets
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              until curl -sf http://litellm-gateway-svc.ai-platform.svc.cluster.local:4000/health/readiness; do
+                echo "Waiting for LiteLLM Proxy..."
+                sleep 3
+              done
+              curl -sf -X POST http://litellm-gateway-svc.ai-platform.svc.cluster.local:4000/key/generate \
+                -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
+                -H "Content-Type: application/json" \
+                -d '{"key_alias":"realtime-team","rpm_limit":100,"tpm_limit":150000,"models":["qwen2.5-7b"]}' || true
+              curl -sf -X POST http://litellm-gateway-svc.ai-platform.svc.cluster.local:4000/key/generate \
+                -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
+                -H "Content-Type: application/json" \
+                -d '{"key_alias":"batch-team","rpm_limit":10,"tpm_limit":25000,"models":["qwen2.5-7b-batch"]}' || true
+---
+# ==============================================================================
+# Kubernetes Gateway API Inference Extension: Endpoint Picker (EPP) & CRDs
+# Prerequisite: Install Gateway API Inference Extension CRDs before applying
+# InferencePool / InferenceModel (see Chapter 4 Section 4).
+# Also apply labs/m4-gateway/k8s/gateway-api-route.yaml to attach Gateway + HTTPRoute.
+# ==============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vllm-qwen-epp-sa
+  namespace: ai-platform
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vllm-qwen-epp-role
+  namespace: ai-platform
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["inference.networking.x-k8s.io"]
+    resources: ["inferencepools", "inferencemodels"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vllm-qwen-epp-binding
+  namespace: ai-platform
+subjects:
+  - kind: ServiceAccount
+    name: vllm-qwen-epp-sa
+    namespace: ai-platform
+roleRef:
+  kind: Role
+  name: vllm-qwen-epp-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-qwen-epp
+  namespace: ai-platform
+  labels:
+    app: vllm-qwen-epp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-qwen-epp
+  template:
+    metadata:
+      labels:
+        app: vllm-qwen-epp
+    spec:
+      serviceAccountName: vllm-qwen-epp-sa
+      containers:
+        - name: epp
+          image: registry.k8s.io/gateway-api-inference-extension/epp:v0.3.0
+          args:
+            - "--pool-name=vllm-qwen-pool"
+            - "--pool-namespace=ai-platform"
+            - "--grpc-port=9002"
+          ports:
+            - containerPort: 9002
+              name: grpc
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-qwen-epp
+  namespace: ai-platform
+  labels:
+    app: vllm-qwen-epp
+spec:
+  selector:
+    app: vllm-qwen-epp
+  ports:
+    - name: grpc-ext-proc
+      port: 9002
+      targetPort: 9002
+      appProtocol: kubernetes.io/h2c
+---
+apiVersion: inference.networking.x-k8s.io/v1alpha2
+kind: InferencePool
+metadata:
+  name: vllm-qwen-pool
+  namespace: ai-platform
+spec:
+  targetPortNumber: 8000
+  selector:
+    inference-pool: vllm-qwen-pool
+  extensionRef:
+    name: vllm-qwen-epp
+---
+apiVersion: inference.networking.x-k8s.io/v1alpha2
+kind: InferenceModel
+metadata:
+  name: qwen25-7b-realtime
+  namespace: ai-platform
+spec:
+  modelName: qwen2.5-7b
+  criticality: Critical
+  poolRef:
+    name: vllm-qwen-pool
+---
+apiVersion: inference.networking.x-k8s.io/v1alpha2
+kind: InferenceModel
+metadata:
+  name: qwen25-7b-batch
+  namespace: ai-platform
+spec:
+  modelName: qwen2.5-7b-batch
+  criticality: Sheddable
+  poolRef:
+    name: vllm-qwen-pool

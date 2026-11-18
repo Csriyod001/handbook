@@ -1,0 +1,80 @@
+# ==============================================================================
+# Cloud GPU VM Values Override (`values-cloud-gpu-7b-awq.yaml`)
+# Dedicated single NVIDIA L4 (24GB VRAM) deployment for Flagship Config C
+# (Qwen/Qwen2.5-7B-Instruct-AWQ) matching Module 3 & Module 6 benchmarks.
+# ==============================================================================
+
+namespace: ai-platform
+replicaCount: 1
+
+# Dedicated L4 GPU: allow scheduling on single-node Cloud VMs (k3s) without Kind labels.
+nodeSelector: {}
+
+# Single replica uses maxSurge=0/maxUnavailable=1 and templates/pdb.yaml automatically omits
+# PodDisruptionBudget when replicaCount <= 1 to avoid blocking node drains.
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+
+image:
+  repository: vllm/vllm-openai
+  tag: "v0.8.5"
+  pullPolicy: IfNotPresent
+
+service:
+  name: vllm-primary-svc
+  type: ClusterIP
+  port: 8000
+
+model:
+  id: "Qwen/Qwen2.5-7B-Instruct-AWQ"
+  maxModelLen: 4096
+  gpuMemoryUtilization: "0.92"
+  enforceEager: false
+  passVllmCliArgs: true
+
+# Canonical Config C vLLM V1 flags (matches labs/m3-vllm/start_vllm_optimized.sh)
+vllmArgs:
+  - "--quantization=awq_marlin"
+  - "--dtype=float16"
+  - "--enable-prefix-caching"
+  - "--max-num-batched-tokens=2048"
+  - "--max-num-seqs=64"
+
+modelCache:
+  enabled: true
+  createPvc: true
+  pvcName: hf-model-cache-pvc
+  mountPath: /cache/huggingface
+  accessMode: ReadWriteOnce
+  storageClassName: local-path
+  storageSize: 30Gi
+
+resources:
+  requests:
+    cpu: "2000m"
+    memory: "8Gi"
+    nvidia.com/gpu: 1
+  limits:
+    cpu: "4000m"
+    memory: "16Gi"
+    nvidia.com/gpu: 1
+
+probes:
+  startup:
+    path: /health
+    periodSeconds: 5
+    failureThreshold: 36
+    timeoutSeconds: 3
+  readiness:
+    path: /health
+    periodSeconds: 5
+    failureThreshold: 2
+    timeoutSeconds: 3
+  liveness:
+    path: /health
+    periodSeconds: 15
+    failureThreshold: 3
+    timeoutSeconds: 5

@@ -1,0 +1,156 @@
+{
+  "uid": "ai-infra-vllm-v1-dcgm",
+  "title": "vLLM V1 & NVIDIA DCGM Production Telemetry Dashboard",
+  "tags": ["ai-infra", "vllm-v1", "dcgm", "keda", "sre"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "p95 Time-To-First-Token (TTFT Seconds — SLA < 0.8s)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(vllm:time_to_first_token_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95 TTFT (s)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "p95 Inter-Token Latency (ITL / TPOT Seconds — SLA < 0.03s)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(vllm:inter_token_latency_seconds_bucket[5m])) by (le)) or histogram_quantile(0.95, sum(rate(vllm:time_per_output_token_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95 ITL (s)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "KV-Cache Block Pool Usage (0.0 - 1.0 — KEDA Threshold 0.80)",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(vllm:kv_cache_usage_perc)",
+          "legendFormat": "Avg KV-Cache Usage"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Scheduler Queue Depth (Running vs Waiting — KEDA Threshold > 5)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(vllm:num_requests_running)",
+          "legendFormat": "Running Batch"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(vllm:num_requests_waiting)",
+          "legendFormat": "Waiting Queue"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Automatic Prefix Cache (APC) Hit Rate (%)",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(vllm:prefix_cache_hits_total[5m])) / clamp_min(sum(rate(vllm:prefix_cache_queries_total[5m])), 1e-9)",
+          "legendFormat": "APC Hit Ratio"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "KV-Cache Preemption Rate (RECOMPUTE Preemptions/sec)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(vllm:num_preemptions_total[5m]))",
+          "legendFormat": "Preemptions / sec"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Total Token Generation Throughput (Tokens/sec)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(vllm:generation_tokens_total[1m]))",
+          "legendFormat": "Output Tokens / sec"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "NVIDIA DCGM Hardware Profiling: GPU_UTIL vs SM_ACTIVE vs DRAM_ACTIVE (0.0 - 1.0)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(DCGM_FI_DEV_GPU_UTIL) / 100",
+          "legendFormat": "DCGM GPU Util (0-1)"
+        },
+        {
+          "refId": "B",
+          "expr": "avg(DCGM_FI_PROF_SM_ACTIVE)",
+          "legendFormat": "SM Active (Compute Bound)"
+        },
+        {
+          "refId": "C",
+          "expr": "avg(DCGM_FI_PROF_DRAM_ACTIVE)",
+          "legendFormat": "DRAM Active (Memory Bandwidth Bound)"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "NVIDIA DCGM GPU VRAM Framebuffer Used (MiB)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "mbytes",
+          "min": 0
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg(DCGM_FI_DEV_FB_USED)",
+          "legendFormat": "VRAM Framebuffer Used (MiB)"
+        }
+      ]
+    }
+  ]
+}

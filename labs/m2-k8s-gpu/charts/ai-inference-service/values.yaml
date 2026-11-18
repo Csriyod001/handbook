@@ -1,0 +1,114 @@
+# ==============================================================================
+# Default Helm Values for `ai-inference-service` (Module 2 — Local & Hybrid Default)
+# Canonical Variables aligned 100% with Module 1 Dockerfile & SPEC_AND_STYLE_GUIDE.md:
+# - Image     : ai-inference-service:1.0.0 (built in labs/m1-foundations/Dockerfile)
+# - Port      : 8000
+# - HF_HOME   : /cache/huggingface (backed by PVC hf-model-cache-pvc)
+# - Probes    : /healthz (startup/liveness) & /readyz (readiness)
+# ==============================================================================
+
+namespace: ai-platform
+replicaCount: 2
+
+image:
+  repository: ai-inference-service
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+service:
+  name: vllm-primary-svc
+  type: ClusterIP
+  port: 8000
+
+model:
+  # Local CPU / Time-Sliced GPU default: Qwen/Qwen2.5-0.5B-Instruct
+  # Switch to Qwen/Qwen2.5-7B-Instruct-AWQ in values-cloud-gpu.yaml for dedicated L4 GPU
+  id: "Qwen/Qwen2.5-0.5B-Instruct"
+  maxModelLen: 2048
+  gpuMemoryUtilization: "0.20"
+  enforceEager: true
+  passVllmCliArgs: false
+
+# Optional extra vLLM V1 CLI flags (used in Module 3 optimization)
+vllmArgs: []
+
+# Shared Model Weight Volume Cache (`HF_HOME=/cache/huggingface`)
+# createPvc defaults to false because Module 1 OpenTofu provisions `hf-model-cache-pvc` on Kind.
+# Standalone Cloud GPU overrides (values-cloud-gpu*.yaml) set createPvc: true.
+modelCache:
+  enabled: true
+  createPvc: false
+  pvcName: hf-model-cache-pvc
+  mountPath: /cache/huggingface
+  accessMode: ReadWriteOnce
+  storageClassName: ""
+  storageSize: 20Gi
+
+# Hardened Security Context (Non-root UID 10001 + Read-Only Root Filesystem)
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  readOnlyRootFilesystem: true
+
+# Zero-Downtime RollingUpdate Strategy
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+terminationGracePeriodSeconds: 60
+
+# Three-Tier Probe Configuration for Slow-Loading AI Models
+probes:
+  startup:
+    path: /healthz
+    periodSeconds: 5
+    failureThreshold: 36   # Up to 180 seconds for initial weight loading
+    timeoutSeconds: 3
+  readiness:
+    path: /readyz
+    periodSeconds: 5
+    failureThreshold: 2
+    timeoutSeconds: 3
+  liveness:
+    path: /healthz
+    periodSeconds: 15
+    failureThreshold: 3
+    timeoutSeconds: 5
+
+# GPU Resource Allocation & Scheduling
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+    nvidia.com/gpu: 1
+  limits:
+    cpu: "2000m"
+    memory: "4Gi"
+    nvidia.com/gpu: 1
+
+priorityClass:
+  create: true
+  productionName: ai-production-high-priority
+  productionValue: 1000000
+  batchName: ai-batch-low-priority
+  batchValue: 1000
+
+nodeSelector:
+  ai.platform/node-pool: gpu-inference
+
+tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+  - key: "dedicated"
+    operator: "Equal"
+    value: "gpu"
+    effect: "NoSchedule"
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

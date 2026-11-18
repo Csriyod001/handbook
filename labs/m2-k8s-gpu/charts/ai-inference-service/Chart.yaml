@@ -1,0 +1,13 @@
+apiVersion: v2
+name: ai-inference-service
+description: "Production Helm Chart for AI & LLM Inference Workloads on Kubernetes (Namespace: ai-platform)"
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - ai-infrastructure
+  - vllm
+  - kubernetes
+  - gpu-time-slicing
+maintainers:
+  - name: AI Platform Engineering Team

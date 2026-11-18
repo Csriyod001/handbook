@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-deployment
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: ai-infra-handbook
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: {{ .Values.updateStrategy.type }}
+    rollingUpdate:
+      maxSurge: {{ .Values.updateStrategy.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.updateStrategy.rollingUpdate.maxUnavailable }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      priorityClassName: {{ .Values.priorityClass.productionName }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: vllm-inference
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.model.passVllmCliArgs }}
+          args:
+            - "--model"
+            - {{ .Values.model.id | quote }}
+            - "--port"
+            - {{ .Values.service.port | quote }}
+            - "--max-model-len"
+            - {{ .Values.model.maxModelLen | quote }}
+            - "--gpu-memory-utilization"
+            - {{ .Values.model.gpuMemoryUtilization | quote }}
+            {{- if .Values.model.enforceEager }}
+            - "--enforce-eager"
+            {{- end }}
+            {{- range .Values.vllmArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          {{- end }}
+          env:
+            - name: SERVICE_NAME
+              value: "{{ .Values.image.repository }}"
+            - name: PORT
+              value: {{ .Values.service.port | quote }}
+            - name: MODEL_ID
+              value: {{ .Values.model.id | quote }}
+            - name: HF_HOME
+              value: {{ .Values.modelCache.mountPath | quote }}
+            - name: HOME
+              value: "/tmp"
+            - name: VLLM_CACHE_ROOT
+              value: "/tmp/vllm-cache"
+            - name: VLLM_CONFIG_ROOT
+              value: "/tmp/vllm-config"
+            - name: TMPDIR
+              value: "/tmp"
+            - name: TORCHINDUCTOR_CACHE_DIR
+              value: "/tmp/torchinductor"
+            - name: TRITON_CACHE_DIR
+              value: "/tmp/triton"
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 5"]
+          startupProbe:
+            httpGet:
+              path: {{ .Values.probes.startup.path }}
+              port: http
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+            timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: hf-model-cache
+              mountPath: {{ .Values.modelCache.mountPath }}
+            - name: tmp-dir
+              mountPath: /tmp
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        - name: hf-model-cache
+          persistentVolumeClaim:
+            claimName: {{ .Values.modelCache.pvcName }}
+        - name: tmp-dir
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi

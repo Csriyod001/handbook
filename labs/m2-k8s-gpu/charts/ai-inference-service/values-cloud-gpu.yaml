@@ -1,0 +1,78 @@
+# ==============================================================================
+# Cloud GPU VM Values Override (`values-cloud-gpu.yaml`)
+# Used when deploying real `vllm/vllm-openai` pods on NVIDIA L4 (24GB) with
+# 4x GPU Time-Slicing (`--gpu-memory-utilization 0.20 --enforce-eager`).
+# ==============================================================================
+
+namespace: ai-platform
+replicaCount: 4
+
+# Important: With replicaCount=4 on a 4-slot time-sliced L4 GPU, maxSurge=1/maxUnavailable=0
+# deadlocks because 0 spare GPU slots exist for the surge pod. Terminate 1 pod before recreating.
+# Also ensure the shared hf-model-cache-pvc volume has group write (fsGroup 10001 on CSI block PVCs,
+# or `chown -R 10001:10001` / `chmod 0775` on hostPath/NFS) for non-root UID 10001.
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+
+nodeSelector: {}
+
+image:
+  repository: vllm/vllm-openai
+  tag: "v0.8.5"
+  pullPolicy: IfNotPresent
+
+service:
+  name: vllm-primary-svc
+  type: ClusterIP
+  port: 8000
+
+model:
+  id: "Qwen/Qwen2.5-0.5B-Instruct"
+  maxModelLen: 2048
+  gpuMemoryUtilization: "0.20"
+  enforceEager: true
+  passVllmCliArgs: true
+
+# Optional extra vLLM V1 CLI flags for Module 3 (APC, Quantization, Chunked Prefill)
+vllmArgs:
+  - "--enable-prefix-caching"
+  - "--max-num-batched-tokens=2048"
+
+modelCache:
+  enabled: true
+  createPvc: true
+  pvcName: hf-model-cache-pvc
+  mountPath: /cache/huggingface
+  accessMode: ReadWriteOnce
+  storageClassName: local-path
+  storageSize: 20Gi
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "2Gi"
+    nvidia.com/gpu: 1
+  limits:
+    cpu: "2000m"
+    memory: "6Gi"
+    nvidia.com/gpu: 1
+
+probes:
+  startup:
+    path: /health
+    periodSeconds: 5
+    failureThreshold: 36
+    timeoutSeconds: 3
+  readiness:
+    path: /health
+    periodSeconds: 5
+    failureThreshold: 2
+    timeoutSeconds: 3
+  liveness:
+    path: /health
+    periodSeconds: 15
+    failureThreshold: 3
+    timeoutSeconds: 5

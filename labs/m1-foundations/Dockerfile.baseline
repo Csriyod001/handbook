@@ -1,0 +1,30 @@
+# ==============================================================================
+# BASELINE DOCKERFILE (ANTI-PATTERN FOR OPTIMIZATION EXERCISE)
+# Problems intentionally included for Baseline measurement:
+# 1. Single-stage build leaving compilers (gcc, build-essential, git) in image
+# 2. Copies entire source tree BEFORE installing dependencies (breaks layer cache)
+# 3. Runs as UID 0 (root) and writes cache to /root/.cache (fails readOnlyRootFs)
+# ==============================================================================
+FROM python:3.12-bookworm
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Anti-pattern: copying source code before installing dependencies
+COPY . /app
+
+RUN pip install --upgrade pip && \
+    pip install fastapi uvicorn pydantic pytest httpx
+
+ENV PORT=8000 \
+    ENABLE_BOUNDED_QUEUE=false
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

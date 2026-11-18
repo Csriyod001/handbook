@@ -1,0 +1,19 @@
+{{- if .Values.priorityClass.create }}
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.priorityClass.productionName }}
+value: {{ .Values.priorityClass.productionValue }}
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: "High-priority class for customer-facing AI inference pods in ai-platform."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ .Values.priorityClass.batchName }}
+value: {{ .Values.priorityClass.batchValue }}
+preemptionPolicy: Never
+globalDefault: false
+description: "Low-priority class for background batch jobs that can be preempted when GPUs are scarce."
+{{- end }}

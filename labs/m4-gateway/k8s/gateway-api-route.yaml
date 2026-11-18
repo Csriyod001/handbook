@@ -1,0 +1,59 @@
+# ==============================================================================
+# Module 4 (M4): Kubernetes Gateway API + Inference Extension Route & Monitor
+# Prerequisite: Gateway API CRDs + a Gateway controller supporting InferencePool
+# external processing (e.g., Envoy Gateway / kgateway) and Prometheus Operator CRDs.
+# ==============================================================================
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: ai-inference-gateway
+  namespace: ai-platform
+  labels:
+    app: ai-inference-gateway
+spec:
+  # Adjust gatewayClassName to match your cluster controller (e.g., eg or kgateway)
+  gatewayClassName: envoy
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 8080
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vllm-qwen-route
+  namespace: ai-platform
+spec:
+  parentRefs:
+    - name: ai-inference-gateway
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+      backendRefs:
+        - group: inference.networking.x-k8s.io
+          kind: InferencePool
+          name: vllm-qwen-pool
+          port: 8000
+          weight: 1
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: litellm-gateway-metrics
+  namespace: ai-platform
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: litellm-gateway
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

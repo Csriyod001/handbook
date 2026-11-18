@@ -1,0 +1,98 @@
+name: Module 1 — AI Container, Security Scan & OpenTofu CI
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "labs/m1-foundations/**"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "labs/m1-foundations/**"
+
+defaults:
+  run:
+    working-directory: labs/m1-foundations
+
+jobs:
+  unit-tests-and-lint:
+    name: "1. Unit Tests & Bounded Queue Resilience (uv + pytest)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Astral uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Run Pytest Suite (Probes, HF_HOME & HTTP 429 Load Shedding)
+        run: |
+          uv run --extra dev pytest -v
+
+  container-build-and-trivy-scan:
+    name: "2. Multi-Stage Docker Build & Trivy Security Gate"
+    runs-on: ubuntu-latest
+    needs: unit-tests-and-lint
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build Production Multi-Stage Image
+        run: |
+          docker build -t ai-inference-service:${{ github.sha }} -f Dockerfile .
+
+      - name: Verify Non-Root UID 10001 & Read-Only RootFS Readiness
+        run: |
+          mkdir -p /tmp/ai-infra-hf-cache
+          chmod 777 /tmp/ai-infra-hf-cache
+          docker run -d --name verify-ro \
+            --user 10001:10001 \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            -v /tmp/ai-infra-hf-cache:/cache/huggingface:rw \
+            -p 8000:8000 \
+            ai-inference-service:${{ github.sha }}
+          sleep 3
+          curl -sf http://127.0.0.1:8000/healthz
+          curl -sf http://127.0.0.1:8000/readyz
+          docker rm -f verify-ro
+
+      - name: Run Trivy Vulnerability Scanner (Block on CRITICAL CVEs)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: "ai-inference-service:${{ github.sha }}"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL"
+
+      - name: Run Trivy Misconfiguration Scan on Dockerfile & OpenTofu
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "config"
+          scan-ref: "labs/m1-foundations"
+          skip-files: "labs/m1-foundations/Dockerfile.baseline"
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+
+  opentofu-validate:
+    name: "3. OpenTofu Format & Declarative Validation"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.5"
+
+      - name: OpenTofu Format, Init (Backend-Free) & Validate
+        working-directory: labs/m1-foundations/infra
+        run: |
+          tofu fmt -check
+          tofu init -backend=false
+          tofu validate

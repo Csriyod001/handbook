@@ -1,0 +1,45 @@
+# ==============================================================================
+# Module 5 (M5): Prometheus ServiceMonitor for vLLM V1 & DCGM Exporter
+# Prerequisites: kube-prometheus-stack & NVIDIA dcgm-exporter installed.
+# ==============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vllm-serving-metrics
+  namespace: ai-platform
+  labels:
+    release: monitoring
+    app: vllm-serving
+spec:
+  selector:
+    matchLabels:
+      app: vllm-serving
+  namespaceSelector:
+    matchNames:
+      - ai-platform
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nvidia-dcgm-exporter
+  namespace: monitoring
+  labels:
+    release: monitoring
+    app: nvidia-dcgm-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dcgm-exporter
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

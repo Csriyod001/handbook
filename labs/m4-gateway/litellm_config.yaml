@@ -1,0 +1,84 @@
+# ==============================================================================
+# Module 4 (M4): LiteLLM Proxy Multi-Tenant Governance & Failover Configuration
+# Service Endpoint: http://litellm-gateway-svc.ai-platform.svc.cluster.local:4000
+# ==============================================================================
+
+model_list:
+  # Primary Serving Backend (vllm-primary-svc:8000)
+  - model_name: qwen2.5-7b
+    litellm_params:
+      model: openai/Qwen/Qwen2.5-7B-Instruct-AWQ
+      api_base: http://vllm-primary-svc.ai-platform.svc.cluster.local:8000/v1
+      api_key: "os.environ/VLLM_API_KEY"
+      rpm: 120
+      tpm: 250000
+      timeout: 10.0
+      stream_timeout: 3.0
+    model_info:
+      id: "primary-vllm-pool"
+      tier: "production-primary"
+
+  # Secondary Warm-Standby / Failover Backend (vllm-secondary-svc:8000)
+  - model_name: qwen2.5-7b-secondary
+    litellm_params:
+      model: openai/Qwen/Qwen2.5-7B-Instruct-AWQ
+      api_base: http://vllm-secondary-svc.ai-platform.svc.cluster.local:8000/v1
+      api_key: "os.environ/VLLM_API_KEY"
+      rpm: 120
+      tpm: 250000
+      timeout: 10.0
+      stream_timeout: 3.0
+    model_info:
+      id: "secondary-vllm-pool"
+      tier: "production-fallback"
+
+  # Batch Governance Alias (stricter quota tier mapped to vllm-primary-svc)
+  - model_name: qwen2.5-7b-batch
+    litellm_params:
+      model: openai/Qwen/Qwen2.5-7B-Instruct-AWQ
+      api_base: http://vllm-primary-svc.ai-platform.svc.cluster.local:8000/v1
+      api_key: "os.environ/VLLM_API_KEY"
+      rpm: 10
+      tpm: 25000
+      timeout: 10.0
+      stream_timeout: 3.0
+    model_info:
+      id: "batch-vllm-pool"
+      tier: "batch-throttled"
+
+router_settings:
+  routing_strategy: "least-busy"
+  num_retries: 0
+  timeout: 10.0
+  stream_timeout: 3.0
+  allowed_fails: 3
+  cooldown_time: 30
+  fallbacks:
+    - {"qwen2.5-7b": ["qwen2.5-7b-secondary"]}
+    - {"qwen2.5-7b-batch": ["qwen2.5-7b-secondary"]}
+  redis_host: "redis-svc.ai-platform.svc.cluster.local"
+  redis_port: 6379
+
+litellm_settings:
+  drop_params: true
+  cache: true
+  cache_params:
+    type: "redis"
+    host: "redis-svc.ai-platform.svc.cluster.local"
+    port: 6379
+    ttl: 600
+  success_callback: ["prometheus"]
+  failure_callback: ["prometheus"]
+  # Self-contained Pre-call PDPA PII Redaction Callback (13-digit Thai National ID & Phone)
+  # Mounted via ConfigMap `litellm-config` into `/app/pdpa_guardrail.py`.
+  # (For multi-language NER in enterprise clusters, optionally pair with a Presidio Analyzer/Anonymizer sidecar.)
+  callbacks: ["pdpa_guardrail.proxy_handler_instance"]
+
+general_settings:
+  master_key: "os.environ/LITELLM_MASTER_KEY"
+  database_url: "os.environ/DATABASE_URL"
+  store_model_in_db: true
+  require_auth_for_metrics_endpoint: false
+  # Pre-configured Multi-Tenant Virtual Key Quotas
+  # 1. realtime-team: High priority interactive chat (100 RPM, 150,000 TPM)
+  # 2. batch-team: Background document summarization (10 RPM, 25,000 TPM)

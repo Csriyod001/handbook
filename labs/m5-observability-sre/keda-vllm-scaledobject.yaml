@@ -1,0 +1,133 @@
+# ==============================================================================
+# Module 5 (M5): KEDA ScaledObject & Production vLLM Deployment
+# Features:
+#   1. Shared Model Cache PVC (`hf-model-cache-pvc`) mounted at HF_HOME=/cache/huggingface
+#      Note: Use ReadWriteMany (RWX) for multi-node scale-out; RWO works on single-node Kind/L4.
+#   2. Graceful Shutdown (`terminationGracePeriodSeconds: 60` + `preStop: sleep 5`)
+#   3. KEDA Prometheus Dual Triggers (pod-scoped to match both Mock & real vLLM V1 pods):
+#      - Waiting Queue Depth: sum(vllm:num_requests_waiting) > 5
+#      - KV-Cache Utilization: avg(vllm:kv_cache_usage_perc) > 0.80
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-primary
+  namespace: ai-platform
+  labels:
+    app: vllm-serving
+    role: primary
+spec:
+  replicas: 1
+  # Cloud GPU note (0 spare GPUs without surge nodes): set maxSurge: 0, maxUnavailable: 1 (matches M2 values-cloud-gpu.yaml)
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: vllm-serving
+      role: primary
+  template:
+    metadata:
+      labels:
+        app: vllm-serving
+        role: primary
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: vllm-inference
+          image: mock-vllm-server:1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: SERVER_ID
+              value: "vllm-primary-svc"
+            - name: MODEL_NAME
+              value: "mock-qwen2.5-7b"
+            - name: HF_HOME
+              value: "/cache/huggingface"
+            - name: VLLM_CACHE_ROOT
+              value: "/tmp/vllm-cache"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 5"]
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 5
+            failureThreshold: 36
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8000
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"
+          volumeMounts:
+            - name: hf-model-cache
+              mountPath: /cache/huggingface
+            - name: tmp-dir
+              mountPath: /tmp
+      volumes:
+        - name: hf-model-cache
+          persistentVolumeClaim:
+            claimName: hf-model-cache-pvc
+        - name: tmp-dir
+          emptyDir: {}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vllm-keda-scaler
+  namespace: ai-platform
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vllm-primary
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 1
+  maxReplicaCount: 3
+  triggers:
+    - type: prometheus
+      name: vllm-waiting-requests-queue
+      metricType: AverageValue
+      metadata:
+        serverAddress: http://prometheus-operated.monitoring.svc.cluster.local:9090
+        metricName: vllm_waiting_requests_queue
+        query: sum(vllm:num_requests_waiting{namespace="ai-platform",pod=~"vllm-primary-.*"})
+        threshold: "5"
+    - type: prometheus
+      name: vllm-kv-cache-usage-ratio
+      metricType: Value
+      metadata:
+        serverAddress: http://prometheus-operated.monitoring.svc.cluster.local:9090
+        metricName: vllm_kv_cache_usage_ratio
+        query: avg(vllm:kv_cache_usage_perc{namespace="ai-platform",pod=~"vllm-primary-.*"})
+        threshold: "0.80"
