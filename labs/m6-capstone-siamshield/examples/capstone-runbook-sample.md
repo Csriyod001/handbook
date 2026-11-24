@@ -21,7 +21,7 @@
 
 ### ขั้นที่ 2: ปกป้องทราฟฟิก `tier-realtime` ทันทีภายใน 3 นาที (Immediate Isolation & Failover)
 1. **หาก `vllm:kv_cache_usage_perc > 0.85` หรือ `vllm:num_requests_waiting > 5` จากการไหลทะลักของงาน Batch:**
-   - ยืนยันว่า Endpoint Picker (EPP) ทำการ Shed ทราฟฟิก `InferenceModel/siamshield-tier-batch` (`criticality: Sheddable`) แล้ว
+   - ยืนยันว่า Endpoint Picker (EPP) ทำการ Shed ทราฟฟิก `InferenceObjective/siamshield-tier-batch` (`priority: -10`, Sheddable) แล้ว
    - หากจำเป็น ให้ปรับลดโควตา RPM ของ `batch-team` (`qwen2.5-7b-batch`) ลงชั่วคราวที่ `litellm-gateway-svc:4000`
 2. **หากพอดใน `vllm-primary-svc` ค้างหรือเกิด ECC Error:**
    - ยืนยันว่า `LiteLLM Proxy` (`num_retries: 0`) สลับทราฟฟิกไปยัง `vllm-secondary-svc:8000` ภายใน `stream_timeout: 3.0s` (สังเกตจาก Log ของ `deploy/litellm-gateway` / Response Header `x-litellm-api-base` บน Gateway จริง หรือ Header `X-Sim-Fallback-Triggered: true` ในโหมด Simulator)

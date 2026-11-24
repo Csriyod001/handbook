@@ -187,6 +187,13 @@ $$\text{Theoretical Min ITL (Batch=1)} \approx \frac{M_{\text{weights}}}{\text{M
 
 ---
 
+### 3.4 ยุคใหม่ของการจัดสรร GPU: NVIDIA Device Plugin vs Kubernetes DRA (Dynamic Resource Allocation)
+ใน Kubernetes รุ่นใหม่ (v1.31–v1.34+ GA) **Dynamic Resource Allocation (`resource.k8s.io`)** กำลังเข้ามาแก้ข้อจำกัดของ `nvidia-device-plugin` แบบดั้งเดิม:
+- **ข้อจำกัดของ Extended Resource (`nvidia.com/gpu: 1`):** Kubernetes มองการ์ดจอเป็นเพียงจำนวนเต็ม (Scalar integer) ทำให้ไม่สามารถระบุสเปกเฉพาะ (เช่น ขอเฉพาะการ์ดที่มี VRAM ≥ 24GB, มี NVLink หรือต้องการ MIG profile แบบไดนามิก) และทำ Time-Slicing/MPS ข้ามหลาย Pod ได้อย่างยืดหยุ่นน้อยกว่า
+- **แนวคิดของ DRA (`DeviceClass`, `ResourceClaim`, `ResourceClaimTemplate`):** แยกการประกาศอุปกรณ์ผ่าน **CEL Filter** ออกจาก Pod Spec และเปิดให้ Container หลายตัวหรือหลาย Pod แชร์ `ResourceClaim` เดียวกันได้อย่างปลอดภัย พร้อมกำหนดค่าไดรเวอร์/CUDA MPS ผ่าน Driver Parameters — ในแล็บหลักของเรายังคงใช้ `nvidia-device-plugin` (`Time-Slicing`) และ `fake-gpu-operator` เพื่อความเสถียรบน `kind` และ `k3s` แต่ควรรู้สถาปัตยกรรม DRA ไว้สำหรับการออกแบบคลัสเตอร์ระดับ Production ยุคใหม่ครับ
+
+---
+
 ## 4. ปฏิบัติการ Hands-On Lab แบบ Step-by-Step (Module 2 Lab)
 
 ### 4.1 โจทย์ธุรกิจและข้อจำกัด (Business Scenario & Constraints)
@@ -303,8 +310,8 @@ helm upgrade --install vllm-primary labs/m2-k8s-gpu/charts/ai-inference-service 
   -f labs/m2-k8s-gpu/charts/ai-inference-service/values-cloud-gpu.yaml
 ```
 
-**การป้องกันอาการ CUDA Graph OOM เมื่อรัน 4 พอดบนการ์ด L4 ใบเดียวกัน:**
-ในการรัน `vLLM` จำนวน 4 พอดบนการ์ดจอ L4 24GB ใบเดียวด้วย Time-Slicing ในไฟล์ `charts/ai-inference-service/values.yaml` เราได้กำหนดอาร์กิวเมนต์บังคับไว้ดังนี้:
+**การป้องกันอาการ CUDA Graph OOM เมื่อรัน 4 พอดบนการ์ด L4 ใบเดียวกัน (และโปรไฟล์ Local RTX 4050 6GB):**
+ในการรัน `vLLM` จำนวน 4 พอดบนการ์ดจอ L4 24GB ใบเดียวด้วย Time-Slicing ในไฟล์ `charts/ai-inference-service/values-cloud-gpu.yaml` เราได้กำหนดอาร์กิวเมนต์บังคับไว้ดังนี้ (และสำหรับเครื่อง Local ที่มี GPU 6GB อย่าง HP Victus RTX 4050 เรามีไฟล์ [`values-local-rtx4050.yaml`](../labs/m2-k8s-gpu/charts/ai-inference-service/values-local-rtx4050.yaml) ที่รัน `Qwen/Qwen2.5-3B-Instruct-AWQ` + `--kv-cache-dtype=fp8` + `--enforce-eager` พร้อมรองรับ `model.revision` เพื่อ Pin Commit SHA ใน Production):
 ```yaml
 model:
   id: "Qwen/Qwen2.5-0.5B-Instruct"
@@ -476,7 +483,7 @@ vllmArgs:
 - `vram_calculator.py` — เครื่องคำนวณ GPU VRAM Sizing (GQA KV-Cache, Quantization, Concurrency Solver)
 - `test_vram_calculator.py` — ชุดทดสอบ `pytest` ตรวจสอบความถูกต้องของสูตรคำนวณทุกกรณี
 - `gpu-time-slicing-config.yaml` — ConfigMap มาตรฐานของ NVIDIA Device Plugin (`replicas: 4`)
-- `charts/ai-inference-service/` — Production Helm Chart (`Chart.yaml`, `values.yaml`, `values-cloud-gpu.yaml`, `values-cloud-gpu-7b-awq.yaml`, `templates/deployment.yaml`, `templates/service.yaml`, `templates/pvc.yaml`, `templates/priorityclass.yaml`, `templates/pdb.yaml`)
+- `charts/ai-inference-service/` — Production Helm Chart (`Chart.yaml`, `values.yaml`, `values-cloud-gpu.yaml`, `values-cloud-gpu-7b-awq.yaml`, `values-local-rtx4050.yaml`, `templates/deployment.yaml`, `templates/service.yaml`, `templates/pvc.yaml`, `templates/priorityclass.yaml`, `templates/pdb.yaml`)
 - `docs/adr-002-gpu-sharing-and-scheduling.md` — เอกสาร ADR-002
 - `verify_m2.sh` — สคริปต์ตรวจสอบความถูกต้องของ Module 2 (`VERIFY_MODE=static|cluster`) และ **Milestone Gate 1**
 
@@ -499,5 +506,6 @@ bash labs/m2-k8s-gpu/verify_m2.sh
 2. **[แหล่งเสริม 1]** **Kubernetes Official Documentation (Probes, Scheduling & GPUs)**  
    - URL: https://kubernetes.io/docs/home/  
    - ส่วนที่ควรอ่าน: *Configure Liveness, Readiness and Startup Probes*, *Taints and Tolerations*, *Pod Priority and Preemption* (ใช้เวลาอ่าน ~3 ชั่วโมง | ฟรี)
-3. **[แหล่งเสริม 2]** **Helm Docs, Kubernetes `kind` Docs & Run:ai `fake-gpu-operator`**  
-   - URL: https://helm.sh/docs/ , https://kind.sigs.k8s.io/docs/ และ https://github.com/run-ai/fake-gpu-operator (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+3. **[แหล่งเสริม 2]** **Helm Docs, Kubernetes `kind` Docs, Kubernetes DRA Docs & Run:ai `fake-gpu-operator`**  
+   - URL: https://helm.sh/docs/ , https://kind.sigs.k8s.io/docs/ , https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/ และ https://github.com/run-ai/fake-gpu-operator (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **Production Kubernetes** *(Josh Rosso et al., O'Reilly)* และ **The Ultra-Scale Playbook** *(Hugging Face, 2025 — บท GPU Memory & Compute Math)*

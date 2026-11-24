@@ -400,7 +400,7 @@ def main() -> int:
             if res.get("error"):
                 print(f"       ERROR: {res['error']}")
 
-        if args.fail-fast and res["status"] in ("FAIL", "ERROR"):
+        if args.fail_fast and res["status"] in ("FAIL", "ERROR"):
             break
 
     overall_duration = time.perf_counter() - overall_start

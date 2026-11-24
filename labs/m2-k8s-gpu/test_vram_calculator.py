@@ -122,3 +122,40 @@ def test_max_concurrent_sequences_solver() -> None:
     )
     assert res.fits_gpu is False
     assert res.max_concurrent_seqs_on_gpu == 0
+
+
+def test_qwen25_3b_awq_fits_rtx4050_6gb() -> None:
+    """Qwen2.5-3B-AWQ with FP8 KV-Cache and --enforce-eager must fit on 6GB RTX 4050."""
+    qwen3b = MODEL_CATALOG["Qwen/Qwen2.5-3B-Instruct"]
+    res = calculate_vram_sizing(
+        qwen3b,
+        weight_precision="int4_awq",
+        kv_precision="fp8",
+        seq_len=2048,
+        concurrent_seqs=8,
+        gpu_vram_gb=6.0,
+        gpu_memory_utilization=0.85,
+        enforce_eager=True,
+    )
+    assert res.fits_gpu is True
+    assert res.weights_gb < 2.0
+    assert res.max_concurrent_seqs_on_gpu >= 30
+
+
+def test_qwen25_7b_fp8_doubles_kv_capacity_per_token() -> None:
+    """FP8 KV-Cache halves bytes/token vs FP16 and fits 24GB L4 with FP8 weights."""
+    qwen7b = MODEL_CATALOG["Qwen/Qwen2.5-7B-Instruct"]
+    fp16_kv = compute_kv_cache_bytes_per_token(qwen7b, kv_precision="fp16")
+    fp8_kv = compute_kv_cache_bytes_per_token(qwen7b, kv_precision="fp8")
+    assert fp8_kv * 2 == fp16_kv
+    res = calculate_vram_sizing(
+        qwen7b,
+        weight_precision="fp8",
+        kv_precision="fp8",
+        seq_len=4096,
+        concurrent_seqs=32,
+        gpu_vram_gb=24.0,
+        gpu_memory_utilization=0.92,
+    )
+    assert res.fits_gpu is True
+    assert res.max_concurrent_seqs_on_gpu >= 100

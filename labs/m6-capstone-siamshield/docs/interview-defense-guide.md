@@ -19,7 +19,7 @@
   - หากแยกขาดจากกัน เมื่อการ์ดของ `tier-realtime` ล่มหรือต้องอัปเดต ระบบหน้าบ้านจะล่มทันที (ไม่มี HA) และในเวลากลางคืนที่ลูกค้าใช้น้อย การ์ดใบนั้นจะว่างเปล่าทำให้ Fleet Utilization ต่ำกว่าจุดคุ้มทุน (`27.1%`)
   - สถาปัตยกรรม **Priority-Shaped Shared Pool + Warm Standby Failover** ใช้กลไกควบคุม 3 ชั้น:
     1. `LiteLLM Proxy` จำกัดโควตา RPM/TPM ของ `sk-batch-team` (`10 RPM`)
-    2. `K8s Gateway API Inference Extension (EPP)` กำหนด `InferenceModel` ของ Realtime เป็น `Critical` และของ Batch เป็น `Sheddable` โดยตัดโหลด Batch ทันทีเมื่อ `vllm:kv_cache_usage_perc > 0.85`
+    2. `K8s Gateway API Inference Extension (EPP)` + `llm-d` กำหนด `InferenceObjective` ของ Realtime เป็น `priority: 100` (Critical) และของ Batch เป็น `priority: -10` (Sheddable) โดยตัดโหลด Batch ทันทีเมื่อ `vllm:kv_cache_usage_perc > 0.85`
     3. `vLLM` V1 Unified Chunked Prefill (`--max-num-batched-tokens 2048`) หั่น Prompt ยาวของงาน Batch ไม่ให้สร้าง Head-of-Line Blocking ต่อเฟส Decode ของงาน Realtime
 
 ---

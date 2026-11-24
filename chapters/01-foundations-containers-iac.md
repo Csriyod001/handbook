@@ -300,29 +300,34 @@ docker rm -f ai-inference-test
 }
 ```
 
-#### ขั้นตอนที่ 4: ตรวจสอบและรันโค้ด OpenTofu (`infra/`)
-ในโฟลเดอร์ [`labs/m1-foundations/infra/`](../labs/m1-foundations/infra/) เราออกแบบโค้ด Infrastructure as Code ที่ยึดค่าตัวแปรกลางจาก `SPEC_AND_STYLE_GUIDE.md` ทุกประการ (`cluster_name = "ai-platform-local"`, `k8s_namespace = "ai-platform"`, `host_hf_cache_path = "/tmp/ai-infra-hf-cache"`, `model_cache_pvc_name = "hf-model-cache-pvc"`):
+#### ขั้นตอนที่ 4: ตรวจสอบและรันโค้ด OpenTofu แบบ 2 ขั้น (`infra/` → `infra/k8s-bootstrap/`)
+ในโฟลเดอร์ [`labs/m1-foundations/infra/`](../labs/m1-foundations/infra/) เราออกแบบโค้ด Infrastructure as Code ที่ยึดค่าตัวแปรกลางจาก `SPEC_AND_STYLE_GUIDE.md` ทุกประการ และแยกออกเป็น 2 Stage เพื่อไม่ให้ `provider "kubernetes"` พึ่งพา output ของ `kind_cluster` ภายใน root เดียวกัน (ทำให้ `tofu plan` / `tofu apply` ทำงานได้สะอาดตั้งแต่รอบแรก):
 
 ```bash
 # (จากรากโปรเจกต์ ai-infra-handbook/)
+# Stage 1: สร้างคลัสเตอร์ Kind 3 โหนด (`ai-platform-local`) พร้อม extraMounts /cache/huggingface
 cd labs/m1-foundations/infra
-
-# 1. ตรวจสอบรูปแบบและโครงสร้างโค้ด OpenTofu (ใช้ kubeadm_config_patches ติด Label ให้ Kind Workers)
 tofu fmt -check
 tofu init -backend=false
 tofu validate
-
-# 2. ดูแผนการสร้างทรัพยากร (Declarative Plan)
 tofu plan -var="enable_cloud_gpu_node=false"
+
+# Stage 2: หลังสั่ง tofu apply สร้าง Kind เสร็จแล้ว (ระบบจะสร้าง ./ai-platform-local-config ให้อัตโนมัติ)
+# ให้สร้าง Namespaces และ hf-model-cache-pvc (หรือส่ง -var="kubeconfig_path=~/.kube/config" หากใช้ kind export kubeconfig)
+cd k8s-bootstrap
+tofu fmt -check
+tofu init -backend=false
+tofu validate
+# tofu apply -var="kubeconfig_path=../ai-platform-local-config"
 ```
 
 ---
 
-### 4.3 เส้นทางที่ 2: `Cloud L4 GPU Path (~$0.50 — ทางเลือกเสริมสำหรับทดสอบ Cost Guardrail IaC)`
-ในไฟล์ `labs/m1-foundations/infra/variables.tf` และ `main.tf` เราได้ใส่ตัวแปร `enable_cloud_gpu_node`, `cloud_gpu_instance_type` (ค่าเริ่มต้น `NVIDIA-L4-24GB`) พร้อมกฎ Validation และบล็อก `check "cloud_gpu_cost_guardrail"` ที่บังคับว่า `auto_terminate_minutes <= 180` (และเผยค่าผ่าน Output `cloud_gpu_profile`) ส่วนการสร้าง GPU VM หรือ Pod จริงจะทำผ่านสคริปต์/คำสั่ง Cloud ในบทที่ 2 (Path B) และบทที่ 3:
+### 4.3 เส้นทางที่ 2: `Cloud L4 GPU Path (Policy Guardrail + AWS Optional Track)`
+ในไฟล์ `labs/m1-foundations/infra/variables.tf` และ `main.tf` เราได้ใส่ Policy Guardrail `check "cloud_gpu_cost_guardrail"` ที่บังคับว่า `auto_terminate_minutes <= 180` ส่วนการสร้างอินสแตนซ์ GPU จริงบนคลาวด์ด้วย OpenTofu (`g6.xlarge` Spot + S3 Model Cache + Dead-Man's Switch) อยู่ในโมดูล [`labs/optional-cloud-aws/`](../labs/optional-cloud-aws/README.md) (หรือเลือกใช้ GPU VM/Pod ในบทที่ 2 และ 3):
 
 ```bash
-# ทดสอบตรวจสอบ Guardrail & Plan Profile สำหรับโหมด Cloud GPU L4
+# ทดสอบตรวจสอบ Policy Guardrail สำหรับโปรไฟล์ Cloud GPU L4 ใน Stage 1
 tofu plan \
   -var="enable_cloud_gpu_node=true" \
   -var="cloud_gpu_instance_type=NVIDIA-L4-24GB" \
@@ -514,8 +519,8 @@ tofu destroy -auto-approve
 - `tests/test_main.py` — ชุดทดสอบ `pytest` 8 กรณีทดสอบ (รวมการตรวจ default `/cache/huggingface`, concurrent `/readyz`, HTTP `TestClient` เมื่อติดตั้ง FastAPI, และ HTTP 429 load shedding)
 - `Dockerfile` — Multi-stage build ด้วย `uv` + Non-root user (`UID 10001`) + `HF_HOME=/cache/huggingface` + `VLLM_CACHE_ROOT=/tmp/vllm-cache` (อิมเมจ `ai-inference-service:1.0.0`)
 - `Dockerfile.baseline` — ไฟล์เปรียบเทียบสำหรับโจทย์ Optimization (ยกเว้นใน `Trivy` `skip-files` ของ CI อย่างชัดเจน)
-- `infra/versions.tf`, `infra/variables.tf`, `infra/main.tf`, `infra/outputs.tf` — โค้ด OpenTofu สำหรับคลัสเตอร์ `ai-platform-local` และ Namespace `ai-platform`
-- `.github/workflows/ci.yml` — สายพาน CI อัตโนมัติ (`pytest`, Docker build, `Trivy`, `OpenTofu`)
+- `infra/` และ `infra/k8s-bootstrap/` — โค้ด OpenTofu แบบ 2-Stage สำหรับคลัสเตอร์ `ai-platform-local`, Namespaces (`ai-platform`, `monitoring`, `gpu-operator`) และ `hf-model-cache-pvc`
+- `.github/workflows/ci.yml` (ที่ root ของ Repository และใน `labs/m1-foundations/`) — สายพาน CI อัตโนมัติ (`pytest`, Docker build, `Trivy`, `OpenTofu`)
 - `docs/adr-001-container-and-model-cache-strategy.md` — เอกสาร ADR-001
 - `verify_m1.sh` — สคริปต์ตรวจสอบความถูกต้องของ Module 1 (`VERIFY_MODE=static|cluster`)
 
@@ -546,3 +551,4 @@ VERIFY_MODE=cluster bash labs/m1-foundations/verify_m1.sh
 3. **[แหล่งเสริม]** **Trivy Official Docs & GitHub Actions Documentation**  
    - URL: https://trivy.dev/docs/ และ https://docs.github.com/en/actions  
    - ส่วนที่ควรอ่าน: *Trivy Container Image & Misconfiguration Scanning* (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025 — บท OS/Docker/GPU Environment Tuning)* และ **Production Kubernetes** *(Josh Rosso et al., O'Reilly — บท Container Security & Resource Management)*

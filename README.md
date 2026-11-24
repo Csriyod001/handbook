@@ -3,10 +3,10 @@
 
 [![Track](https://img.shields.io/badge/Primary_Track-GPU_Serving_%26_vLLM_on_K8s-0066CC?style=for-the-badge)](#)
 [![Secondary Track](https://img.shields.io/badge/Secondary_Track-Enterprise_AI_Gateway_%26_SRE-009966?style=for-the-badge)](#)
-[![Local Hardware](https://img.shields.io/badge/Local_Lab-16GB_RAM_(No_GPU_%240)-FF9900?style=for-the-badge)](#)
-[![Cloud Budget](https://img.shields.io/badge/Cloud_GPU_Validation-%3C_%2410_Total_(NVIDIA_L4)-76B900?style=for-the-badge)](#)
+[![Local Hardware](https://img.shields.io/badge/Local_Lab-16GB_Safe_%2F_32GB%2BRTX4050-FF9900?style=for-the-badge)](#)
+[![Cloud Budget](https://img.shields.io/badge/Cloud_GPU-Prepaid_%3C%2410_%7C_AWS_%2410--%2430-76B900?style=for-the-badge)](#)
 
-> **คู่มือวิศวกรรมเชิงปฏิบัติการ (Practical Engineering Handbook) และชุดแล็บครบวงจร** สำหรับปั้นวิศวกรจากระดับเริ่มต้น (เขียนโค้ดและใช้ Linux/Git พื้นฐานได้ แต่ยังไม่เคยดูแลระบบ Production) ไปสู่ระดับ **Mid-Level-Capable AI Platform / AI Infrastructure Engineer** ภายใน **12 สัปดาห์ (15 ชม./สัปดาห์ = 180 ชม.)**
+> **คู่มือวิศวกรรมเชิงปฏิบัติการ (Practical Engineering Handbook — 2026 Edition)** และชุดแล็บครบวงจร สำหรับปั้นวิศวกรจากระดับเริ่มต้น (เขียนโค้ดและใช้ Linux/Git พื้นฐานได้ แต่ยังไม่เคยดูแลระบบ Production) ไปสู่ระดับ **Mid-Level-Capable AI Platform / AI Infrastructure Engineer** ภายใน **12 สัปดาห์ (15 ชม./สัปดาห์ = 180 ชม.)**
 
 ---
 
@@ -16,9 +16,12 @@
 
 > **"จะนำ Open-weights LLM และบริการ AI ขึ้นรันบน Production Kubernetes อย่างไรให้มีความหน่วงต่ำ (Low TTFT/ITL), รับโหลดพร้อมกันได้สูงโดยไม่เกิดอาการการ์ดจอค้าง (CUDA OOM), ปลอดภัยตามกฎหมาย PDPA / OWASP LLM Top 10, มีระบบสลับสายอัตโนมัติเมื่อเกิดเหตุขัดข้อง (High Availability), และควบคุมต้นทุนต่อ 1 ล้าน Tokens ได้อย่างคุ้มค่าที่สุด"**
 
-หนังสือและชุดแล็บนี้ถูกออกแบบด้วยหลักการ **Backward Competency Design** โดยยึดแนวทาง **Hybrid Execution 85/15**:
-- **85% No-GPU Local Path (\$0 — ปลอดภัยสำหรับเครื่อง RAM 16GB):** ฝึกสร้างและควบคุมระบบทั้งหมดบนเครื่องคอมพิวเตอร์ส่วนตัวด้วย `Docker`, `OpenTofu`, `kind` (Multi-node Kubernetes), `Run:ai fake-gpu-operator`, `vllm-cpu` (`Qwen2.5-0.5B-Instruct`), และ `Lightweight FastAPI Mock vLLM Streaming Server (<80MB RAM/Pod)`
-- **15% On-Demand Cloud GPU Path (รวมทั้งหลักสูตรไม่เกิน \$8–\$10):** เช่าการ์ด **NVIDIA L4 (24GB VRAM)** รายชั่วโมง (~\$0.60–\$0.80/ชม.) เฉพาะช่วงรัน Benchmark และเก็บตัวเลข Optimization จริงเข้า Portfolio เท่านั้น
+หนังสือและชุดแล็บนี้ถูกออกแบบด้วยหลักการ **Backward Competency Design** โดยยึดแนวทาง **3-Tier Hybrid Execution**:
+- **Tier 1 — Local Lab (\$0 — 85–90% ของเวลาเรียน):**
+  - *โหมด RAM 16GB No-GPU Safe:* ใช้ `Docker`, `OpenTofu`, `kind`, `Run:ai fake-gpu-operator`, `vllm-cpu` (`Qwen2.5-0.5B-Instruct`), และ `Lightweight FastAPI Mock vLLM Streaming Server (<80MB RAM/Pod)`
+  - *โหมด HP Victus / WSL2 (RAM 32GB + RTX 4050 6GB Ada Lovelace):* รัน Full Local K8s Stack (Gateway + Prometheus + Grafana + KEDA) พร้อมกันโดยไม่เกิด OOM และรัน **`vLLM` V1 บน CUDA จริง** ด้วย `Qwen/Qwen2.5-1.5B-Instruct` vs `Qwen/Qwen2.5-3B-Instruct-AWQ` + `--kv-cache-dtype fp8`
+- **Tier 2 — On-Demand Cloud GPU 24GB (Prepaid < \$10 หรือ AWS Spot \$10–\$30):** เช่าการ์ด **NVIDIA L4 (24GB VRAM)** (`RunPod`/`Vast.ai` หรือ **AWS EC2 `g6.xlarge` Spot + Auto-Terminate 180 นาที**) เฉพาะช่วงรัน Benchmark `Qwen2.5-7B` (`BF16` vs `AWQ` vs `FP8`) และเก็บตัวเลข Optimization จริงเข้า Portfolio
+- **Tier 3 — Optional Cloud Platform Infra (`labs/optional-cloud-aws/`):** ใช้ OpenTofu สร้าง Private S3 Model Cache, Private ECR, IAM Role และ AWS Budget Alarm (เปิด-ปิดโหมด `enable_gpu_ec2 = true` ได้เมื่อพร้อมรัน `g6.xlarge` Spot) พร้อมตารางเทียบ Service ของ GCP
 
 ---
 
@@ -26,7 +29,7 @@
 
 ```mermaid
 flowchart TD
-    Start(["เริ่มต้น: บทที่ 0 Onboarding & Setup\n(ตรวจสภาพแวดล้อม 16GB RAM ด้วย make check-env)"])
+    Start(["เริ่มต้น: บทที่ 0 Onboarding & Setup\n(ตรวจสภาพแวดล้อม 16GB–32GB / RTX 4050 ด้วย make check-env)"])
 
     subgraph Phase1 ["Phase 1: Cloud-Native & GPU Foundations (Weeks 1–4)"]
         M1["บทที่ 1 (W1–W2): Reproducible AI Foundations\n• Multi-stage Docker + uv + Non-root + Read-only RootFS\n• FastAPI Bounded Queue (HTTP 429 Load Shedding)\n• OpenTofu IaC + GitHub Actions CI + Trivy Scan"]
@@ -97,14 +100,15 @@ flowchart LR
 
 | ลำดับ | บทเรียนในหนังสือ (`chapters/`) | โฟลเดอร์โค้ดปฏิบัติการ (`labs/`) | เวลาเรียน | สถานะ |
 | :--- | :--- | :--- | :---: | :---: |
-| **SSOT** | [**`SPEC_AND_STYLE_GUIDE.md`**](./SPEC_AND_STYLE_GUIDE.md)<br>*(มาตรฐานโครงสร้างบท ตัวแปรกลาง และกฎความถูกต้องทางวิศวกรรม 9 ข้อ)* | — | อ้างอิงตลอดเล่ม | พร้อมใช้งาน |
-| **บทที่ 0** | [**`chapters/00-onboarding-and-setup.md`**](./chapters/00-onboarding-and-setup.md)<br>*การเตรียมเครื่อง Local 16GB RAM, การติดตั้งเครื่องมือ (`Docker`, `kind`, `kubectl`, `helm`, `tofu`, `uv`) และวิธีป้องกันเครื่องค้าง* | [`Makefile`](./Makefile) (`make check-env`) | 2 ชม. (ก่อนเริ่ม W1) | พร้อมใช้งาน |
+| **SSOT** | [**`SPEC_AND_STYLE_GUIDE.md`**](./SPEC_AND_STYLE_GUIDE.md)<br>*(มาตรฐานโครงสร้างบท ตัวแปรกลาง และกฎความถูกต้องทางวิศวกรรม 12 ข้อ)* | — | อ้างอิงตลอดเล่ม | พร้อมใช้งาน |
+| **บทที่ 0** | [**`chapters/00-onboarding-and-setup.md`**](./chapters/00-onboarding-and-setup.md)<br>*การเตรียมเครื่อง Local 16GB–32GB (รองรับ RTX 4050 6GB & Containerized Lab), การติดตั้งเครื่องมือ (`Docker`, `kind`, `kubectl`, `helm`, `tofu`, `uv`) และวิธีป้องกันเครื่องค้าง* | [`Makefile`](./Makefile) (`make check-env`) | 2 ชม. (ก่อนเริ่ม W1) | พร้อมใช้งาน |
 | **บทที่ 1** | [**`chapters/01-foundations-containers-iac.md`**](./chapters/01-foundations-containers-iac.md)<br>*Production AI Containers (`uv`, Multi-stage, Non-root), FastAPI Bounded Queue, GitHub Actions CI (`Trivy`) & OpenTofu IaC* | [`labs/m1-foundations/`](./labs/m1-foundations/) | สัปดาห์ที่ 1–2 (30 ชม.) | พร้อมใช้งาน |
 | **บทที่ 2** | [**`chapters/02-kubernetes-gpu-orchestration.md`**](./chapters/02-kubernetes-gpu-orchestration.md)<br>*Kubernetes Probes สำหรับ LLM, Helm Chart, Shared `HF_HOME` Cache, GPU VRAM Math (GQA), Time-Slicing vs MIG & Fake GPU* | [`labs/m2-k8s-gpu/`](./labs/m2-k8s-gpu/) | สัปดาห์ที่ 3–4 (30 ชม.) | พร้อมใช้งาน |
 | **บทที่ 3** | [**`chapters/03-vllm-serving-optimization.md`**](./chapters/03-vllm-serving-optimization.md)<br>*เจาะลึก `vLLM` V1 Engine, PagedAttention, Continuous Batching, Prefix Caching (APC), Quantization (AWQ/FP8) & Unit Economics* | [`labs/m3-vllm/`](./labs/m3-vllm/) | สัปดาห์ที่ 5–6 (30 ชม.) | พร้อมใช้งาน |
 | **บทที่ 4** | [**`chapters/04-ai-gateway-governance.md`**](./chapters/04-ai-gateway-governance.md)<br>*Enterprise AI Gateway (`LiteLLM Proxy`), Multi-tenancy, Redis Cache, Automated Fallbacks, PDPA Guardrails & K8s Gateway EPP* | [`labs/m4-gateway/`](./labs/m4-gateway/) | สัปดาห์ที่ 7–8 (30 ชม.) | พร้อมใช้งาน |
 | **บทที่ 5** | [**`chapters/05-observability-autoscaling-sre.md`**](./chapters/05-observability-autoscaling-sre.md)<br>*AI Observability (`Prometheus`, `Grafana`, `DCGM`, `vLLM` V1 Metrics), `KEDA` Autoscaling, Chaos Drill, Runbook & Postmortem* | [`labs/m5-observability-sre/`](./labs/m5-observability-sre/) | สัปดาห์ที่ 9–10 (30 ชม.) | พร้อมใช้งาน |
 | **บทที่ 6** | [**`chapters/06-capstone-siamshield-ai.md`**](./chapters/06-capstone-siamshield-ai.md)<br>*Capstone Project (`Project SiamShield AI`): System Design Doc, End-to-End Multi-Tier Platform, Optimization & Interview Defense* | [`labs/m6-capstone-siamshield/`](./labs/m6-capstone-siamshield/) | สัปดาห์ที่ 11–12 (30 ชม.) | พร้อมใช้งาน |
+| **เสริม Cloud** | [**`labs/optional-cloud-aws/README.md`**](./labs/optional-cloud-aws/README.md)<br>*Optional AWS Cloud Track: S3 Model Cache, ECR, IAM, Budgets & `g6.xlarge` Spot (NVIDIA L4 + Auto-Terminate)* | [`labs/optional-cloud-aws/`](./labs/optional-cloud-aws/) | เสริมช่วง W2/W3/W6 | พร้อมใช้งาน |
 | **รวมเล่ม** | **โฟลเดอร์หนังสือฉบับสมบูรณ์ (`dist/`)** | [`dist/`](./dist/) | — | สำหรับรวมเล่ม |
 
 ---
@@ -124,7 +128,7 @@ flowchart LR
 | **W9** | **Module 5** | AI Observability Stack: `Prometheus`, `Grafana`, `DCGM Exporter` & `vLLM` V1 Metrics (`kv_cache_usage_perc`, `prefix_cache_hits_total`) | `labs/m5-observability-sre/`: Grafana Dashboard JSON + Alert Rules | — |
 | **W10** | **Module 5** | Event-Driven Autoscaling ด้วย `KEDA` (Queue/KV-Cache triggers), Chaos Failure Injection, Runbook & Blameless Postmortem | `keda-vllm-scaledobject.yaml` + `docs/runbook-kvcache-saturation-and-high-ttft.md` + `docs/postmortem-001-peak-hour-latency-outage.md` + `docs/adr-004-observability-and-keda-autoscaling.md` | — |
 | **W11** | **Module 6** | Capstone Design Doc & End-to-End Implementation (`Project SiamShield AI`: Multi-Tier `tier-realtime` + `tier-batch` Platform) | `labs/m6-capstone-siamshield/`: `docs/design-doc.md` + Full Stack Repo | — |
-| **W12** | **Module 6 + Buffer** | Capstone Two-Tier Load Testing & Optimization, Chaos Drill, Architecture Defense & **Final Buffer** | `optimization-benchmark-report.md` + `docs/runbook-siamshield-incident.md` + `docs/postmortem-siamshield-drill.md` + `docs/interview-defense-guide.md` | **Gate 3 (จบ W12):** ผ่านเกณฑ์ **Definition of Done (DoD)** ครบทั้ง 5 ข้อ |
+| **W12** | **Module 6 + Buffer** | Capstone Two-Tier Load Testing & Optimization, Chaos Drill, Architecture Defense & **Final Buffer** | `reports/capstone-optimization-report.md` + `docs/runbooks/capstone-runbook.md` + `docs/postmortems/capstone-postmortem.md` + `docs/interview-defense-guide.md` | **Gate 3 (จบ W12):** ผ่านเกณฑ์ **Definition of Done (DoD)** ครบทั้ง 5 ข้อ |
 
 ---
 
@@ -138,19 +142,56 @@ flowchart LR
 | **DoD #2: Reproducible IaC & Automated CI/CD** | สร้างและทำลายโครงสร้างพื้นฐานรวมถึง Deploy ระบบซ้ำได้ 100% ด้วยโค้ด (`OpenTofu` + `Helm` + `GitHub Actions` + `Trivy`) โดยไม่ต้องคลิกตั้งค่าด้วยมือใน Console | บทที่ 1, 2, 6<br>(`m1`, `m2`, `m6`) | • Multi-stage `Dockerfile` (`uv`, Non-root)<br>• OpenTofu Modules (`infra/`)<br>• Production Helm Chart (`charts/`)<br>• `.github/workflows/ci.yml` |
 | **DoD #3: AI Observability & Measurable Optimization** | ติดตั้งระบบวัดผลระดับ Token/GPU (`Prometheus` + `Grafana` + `vLLM` V1 / `DCGM`), รัน Load Test และปรับจูนจนได้ตัวเลข **Before vs After** ที่ดีขึ้นอย่างมีนัยสำคัญ | บทที่ 2, 3, 4, 5, 6<br>(`m2`, `m3`, `m4`, `m5`, `m6`) | • `vram_calculator.py`<br>• `optimization-report-template.md` (TTFT ลด $\ge 50\%$, TPS เพิ่ม $\ge 40\%$)<br>• `grafana-dashboard-vllm-v1.json` + `KEDA ScaledObject` |
 | **DoD #4: Incident Management, Runbook & Postmortem** | จำลองเหตุวิกฤตจริง (Chaos Injection: KV-Cache เต็ม, Noisy Neighbor, Primary Pod ค้าง, Bad Rollout) วินิจฉัยผ่านกราฟ กู้คืนระบบ และเขียน Runbook + Blameless Postmortem | บทที่ 4, 5, 6<br>(`m4`, `m5`, `m6`) | • `tests/test_gateway_resilience.py`<br>• `chaos/trigger_incident.py`<br>• `docs/runbook-kvcache-saturation-and-high-ttft.md`<br>• `docs/postmortem-001-peak-hour-latency-outage.md` |
-| **DoD #5: Mid-Level Interview Trade-Off Defense** | อธิบายเหตุผลเชิงวิศวกรรมว่า **"ทำไมถึงเลือกวิธีนี้"** และ **"ได้อะไรแลกกับเสียอะไร"** พร้อมคำนวณตัวเลขสดและตอบโจทย์เมื่อเงื่อนไขเปลี่ยน (เช่น โหลดพุ่ง 10 เท่า หรือเปลี่ยนเป็นโมเดล 70B) | ทุกบท (บทที่ 1–6 หัวข้อที่ 8) | • คำถามสัมภาษณ์เชิงลึก 28 ข้อพร้อมเฉลย Model Answer ในบทที่ 1–6<br>• `docs/interview-defense-guide.md` ใน Capstone |
+| **DoD #5: Mid-Level Interview Trade-Off Defense** | อธิบายเหตุผลเชิงวิศวกรรมว่า **"ทำไมถึงเลือกวิธีนี้"** และ **"ได้อะไรแลกกับเสียอะไร"** พร้อมคำนวณตัวเลขสดและตอบโจทย์เมื่อเงื่อนไขเปลี่ยน (เช่น โหลดพุ่ง 10 เท่า หรือเปลี่ยนเป็นโมเดล 70B) | ทุกบท (บทที่ 1–6 หัวข้อที่ 8) | • คำถามสัมภาษณ์เชิงลึก 29 ข้อพร้อมเฉลย Model Answer ในบทที่ 1–6<br>• `docs/interview-defense-guide.md` ใน Capstone |
 
 ---
 
-## เริ่มต้นใช้งานอย่างรวดเร็ว (Quickstart)
+## 7. เริ่มต้นใช้งานอย่างรวดเร็ว 4 เส้นทาง (Quickstart — 4 Tracks)
 
-1. **อ่านบทที่ 0 เพื่อเตรียมเครื่องและติดตั้งเครื่องมือพื้นฐาน:**
+ดูรายละเอียดขั้นตอนติดตั้งและแก้ปัญหาครบทุกสภาพแวดล้อมได้ที่ [**`PORTABILITY_AND_QUICKSTART.md`**](./PORTABILITY_AND_QUICKSTART.md)
+
+### Track 1: อ่านหนังสือและแผนภาพแบบ Offline ทันที (Zero-Install)
+เปิดไฟล์ [**`index.html`**](./index.html) หรือ [**`dist/AI_Infra_Interactive_Handbook.html`**](./dist/AI_Infra_Interactive_Handbook.html) ในเบราว์เซอร์ (รองรับ 100% แบบไม่มีอินเทอร์เน็ต) หรือสร้างไฟล์พกพา:
+```bash
+python3 scripts/make package
+python3 scripts/make verify-archive
+```
+
+### Track 2: รันใน Containerized Lab (VS Code DevContainer / Docker Compose)
+เหมาะสำหรับผู้ที่ไม่อยากติดตั้งเครื่องมือ CLI ทีละตัวบนเครื่องหลัก:
+```bash
+python3 scripts/make verify-container
+docker compose -f docker-compose.lab.yml run --rm --service-ports lab
+```
+
+### Track 3: รันบนเครื่อง WSL2 / Linux ส่วนตัว (แนะนำสำหรับ HP Victus 32GB + RTX 4050 6GB)
+1. **อ่านบทที่ 0 เพื่อตั้งค่า `.wslconfig` (22GB RAM) และ NVIDIA Container Toolkit:**
    เปิดอ่านไฟล์ [**`chapters/00-onboarding-and-setup.md`**](./chapters/00-onboarding-and-setup.md)
-2. **รันคำสั่งตรวจสอบความพร้อมของเครื่อง (Hardware, RAM, Docker, Kind, Kubectl, Helm, OpenTofu, uv):**
+2. **ตรวจสอบความพร้อมของเครื่อง (RAM, GPU VRAM, Docker, Kind, Kubectl, Helm, OpenTofu, uv):**
    ```bash
-   make check-env
+   python3 scripts/make check-env
    ```
-3. **ดูคำสั่งช่วยเหลือทั้งหมดในโปรเจกต์:**
+3. **รันชุดตรวจสอบอัตโนมัติแบบ Static ครบทุกโมดูล:**
    ```bash
-   make help
+   python3 scripts/make verify-static
    ```
+
+### Track 4: รันบน AWS Cloud (งบ \$10–\$30 USD: S3 + ECR + `g6.xlarge` Spot L4)
+1. ขอ GPU Service Quota ล่วงหน้า (`All G and VT Spot Instance Requests = 4`) และตั้ง AWS Budgets
+2. ตรวจสอบโค้ดและเปิดใช้งานผ่าน [**`labs/optional-cloud-aws/README.md`**](./labs/optional-cloud-aws/README.md):
+   ```bash
+   python3 scripts/make verify-aws-optional
+   ```
+
+---
+
+## 8. หนังสือและแหล่งเรียนรู้มาตรฐานที่ใช้อ้างอิงร่วม (Curated 2025–2026 References)
+
+| หมวดหมู่ | ชื่อหนังสือ / เอกสารทางการ | จุดเด่นที่นำมาประยุกต์ใช้ใน Handbook ฉบับ 2026 |
+| :--- | :--- | :--- |
+| **GPU & Inference Performance** | **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025)* | เจาะลึก GPU Kernels, Roofline Model, vLLM/SGLang/NVIDIA Dynamo, Disaggregated Prefill–Decode และ Checklist จูน Production |
+| **AI Platform & Eval** | **AI Engineering** *(Chip Huyen, O'Reilly 2025)* | กรอบการประเมินคุณภาพโมเดล (Eval Gate หลัง Quantization), Latency/Cost Engineering, Guardrails |
+| **Distributed & Hardware Scaling** | **The Ultra-Scale Playbook** *(Hugging Face, 2025)* & **How to Scale Your Model** *(Google DeepMind, 2025)* | คณิตศาสตร์ Memory Bandwidth, Arithmetic Intensity, Tensor/Pipeline/Expert Parallelism สำหรับโมเดล 70B+ และ MoE |
+| **Kubernetes & Platform Engineering** | **Production Kubernetes** *(O'Reilly)*, **Kubernetes Patterns (2nd Ed.)**, **Platform Engineering** *(O'Reilly)* | การออกแบบ Multi-tenant K8s, `NetworkPolicy`, Golden Paths, Kubernetes DRA และ Workload Isolation |
+| **SRE & Incident Management** | **The Site Reliability Workbook** *(Google, Free Online)* | Multi-Window Error Budget Burn-Rate Alerts, Runbook Design และ Blameless Postmortem |
+| **2026 Open Standards** | **Kubernetes Gateway API Inference Extension (`v1`) & CNCF `llm-d`**, **OWASP LLM Top 10 (2025)**, **OTel GenAI SemConv** | มาตรฐาน `InferencePool v1`, `InferenceObjective`, KV-Cache-Aware Routing และความปลอดภัยระดับองค์กร |

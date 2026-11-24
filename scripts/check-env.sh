@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # AI Infrastructure & Platform Engineering Handbook — Environment Verification
-# Can be invoked via `make check-env` or `bash scripts/check-env.sh`
+# Can be invoked via `make check-env`, `python3 scripts/make check-env`, or directly
 # ==============================================================================
 set -euo pipefail
 
@@ -17,7 +17,7 @@ mkdir -p "$HOST_HF_CACHE"
 chmod 777 "$HOST_HF_CACHE" 2>/dev/null || true
 
 echo "================================================================================"
-echo "  1. ตรวจสอบทรัพยากรฮาร์ดแวร์ (Hardware & 16GB RAM Guardrail Check)"
+echo "  1. ตรวจสอบทรัพยากรฮาร์ดแวร์ (Hardware, RAM & GPU Guardrail Check)"
 echo "================================================================================"
 OS_NAME=$(uname -s)
 CPU_CORES=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
@@ -26,15 +26,23 @@ FREE_DISK_GB=$(df -BG . 2>/dev/null | awk 'NR==2 {gsub("G","",$4); print $4}' ||
 
 echo "  • Operating System : $OS_NAME ($(uname -m))"
 echo "  • CPU Cores        : $CPU_CORES cores"
-if [ "$TOTAL_RAM_MB" -ge 15000 ]; then
+if [ "$TOTAL_RAM_MB" -ge 20000 ]; then
+  echo "  • System RAM       : [OK] ${TOTAL_RAM_MB} MB (>= 20GB — Full Local Stack + Observability Ready)"
+elif [ "$TOTAL_RAM_MB" -ge 15000 ]; then
   echo "  • System RAM       : [OK] ${TOTAL_RAM_MB} MB (>= 16GB RAM Safe for Hybrid Labs)"
 else
-  echo "  • System RAM       : [WARN] ${TOTAL_RAM_MB} MB (< 16GB — แนะนำให้ใช้ Mock vLLM Server เสมอ)"
+  echo "  • System RAM       : [WARN] ${TOTAL_RAM_MB} MB (< 16GB — ตั้งค่า .wslconfig ตาม Ch00 หรือใช้ Mock Mode)"
 fi
 if [ "$FREE_DISK_GB" -ge 20 ]; then
   echo "  • Free Disk Space  : [OK] ${FREE_DISK_GB} GB available"
 else
   echo "  • Free Disk Space  : [WARN] ${FREE_DISK_GB} GB available (แนะนำอย่างน้อย 20 GB)"
+fi
+if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi --query-gpu=name,memory.total --format=csv,noheader >/dev/null 2>&1; then
+  GPU_INFO=$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -n 1)
+  echo "  • Local CUDA GPU   : [OK] ${GPU_INFO} (พร้อมรัน Path A2 / vLLM CUDA)"
+else
+  echo "  • Local CUDA GPU   : [INFO] ไม่พบ NVIDIA GPU ใน WSL2 (ใช้ Mode A Mock / Cloud L4 / AWS g6.xlarge)"
 fi
 echo "  • HF Cache Mount   : [OK] ${HOST_HF_CACHE} -> Container HF_HOME=/cache/huggingface"
 
@@ -42,10 +50,33 @@ echo ""
 echo "================================================================================"
 echo "  2. ตรวจสอบเครื่องมือวิศวกรรม (CLI Toolchain Check)"
 echo "================================================================================"
+get_cmd_version() {
+  local cmd="$1"
+  local out=""
+  if out="$("$cmd" --version 2>/dev/null | head -n 1)" && [ -n "$out" ]; then
+    printf '%s' "$out"
+    return 0
+  fi
+  if out="$("$cmd" version --client 2>/dev/null | head -n 1)" && [ -n "$out" ]; then
+    printf '%s' "$out"
+    return 0
+  fi
+  if [ "$cmd" = "nvidia-smi" ] && out="$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n 1)" && [ -n "$out" ]; then
+    printf '%s' "$out"
+    return 0
+  fi
+  return 1
+}
+
 for cmd in git python3 make curl jq docker uv kubectl kind helm tofu trivy promtool nvidia-smi; do
   if command -v "$cmd" >/dev/null 2>&1; then
-    VER=$("$cmd" --version 2>/dev/null | head -n 1 || "$cmd" version --client 2>/dev/null | head -n 1 || "$cmd" --query-gpu=name --format=csv,noheader 2>/dev/null | head -n 1 || echo "installed")
-    printf "  • %-10s : [OK] %s\n" "$cmd" "$VER"
+    if VER="$(get_cmd_version "$cmd")"; then
+      printf "  • %-10s : [OK] %s\n" "$cmd" "$VER"
+    elif [ "$cmd" = "docker" ]; then
+      printf "  • %-10s : [WARN] WSL2 Docker Desktop integration ยังไม่เปิดใช้งาน (ดูวิธีเปิดใน Ch00)\n" "$cmd"
+    else
+      printf "  • %-10s : [OK] installed\n" "$cmd"
+    fi
   else
     printf "  • %-10s : [MISSING] (ดูวิธีติดตั้งใน chapters/00-onboarding-and-setup.md)\n" "$cmd"
   fi
@@ -64,6 +95,7 @@ MISSING=0
 for path in \
   "README.md" \
   "SPEC_AND_STYLE_GUIDE.md" \
+  "PORTABILITY_AND_QUICKSTART.md" \
   "Makefile" \
   "chapters/00-onboarding-and-setup.md" \
   "chapters/01-foundations-containers-iac.md" \
@@ -78,6 +110,7 @@ for path in \
   "labs/m4-gateway" \
   "labs/m5-observability-sre" \
   "labs/m6-capstone-siamshield" \
+  "labs/optional-cloud-aws" \
   "dist"; do
   if [ -e "$path" ]; then
     printf "  • %-45s : [OK]\n" "$path"
@@ -89,7 +122,7 @@ done
 
 if [ "$MISSING" -eq 0 ]; then
   echo "--------------------------------------------------------------------------------"
-  echo "  [SUCCESS] โครงสร้างบทที่ 0–6 และแล็บ M1–M6 ครบถ้วนสมบูรณ์ 100% พร้อมฝึกปฏิบัติและทดสอบ!"
+  echo "  [SUCCESS] โครงสร้างบทที่ 0–6 และแล็บ M1–M6 + Optional AWS ครบถ้วนสมบูรณ์ 100%!"
   echo "--------------------------------------------------------------------------------"
 else
   exit 1

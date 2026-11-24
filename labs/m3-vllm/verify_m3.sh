@@ -109,8 +109,29 @@ echo "${OPT_GPU_OUT}" | grep -q -- "--enable-prefix-caching"
 echo "${OPT_GPU_OUT}" | grep -q -- "--max-num-batched-tokens 2048"
 echo "[PASS] start_vllm_optimized.sh validated for AWQ, 0.92 util, APC, and Chunked Prefill."
 
+RTX_BASE_OUT="$(bash "${SCRIPT_DIR}/start_vllm_baseline.sh" --local-rtx4050 --dry-run)"
+echo "${RTX_BASE_OUT}" | grep -q "Qwen/Qwen2.5-1.5B-Instruct"
+echo "${RTX_BASE_OUT}" | grep -q -- "--gpus all"
+echo "${RTX_BASE_OUT}" | grep -q -- "--ipc=host"
+
+RTX_OPT_OUT="$(bash "${SCRIPT_DIR}/start_vllm_optimized.sh" --local-rtx4050 --dry-run)"
+echo "${RTX_OPT_OUT}" | grep -q "Qwen/Qwen2.5-3B-Instruct-AWQ"
+echo "${RTX_OPT_OUT}" | grep -q -- "--kv-cache-dtype fp8"
+echo "${RTX_OPT_OUT}" | grep -q -- "--ipc=host"
+
+FP8_GPU_OUT="$(bash "${SCRIPT_DIR}/start_vllm_optimized.sh" --cloud-gpu-fp8 --dry-run)"
+echo "${FP8_GPU_OUT}" | grep -q -- "--quantization fp8"
+echo "${FP8_GPU_OUT}" | grep -q -- "--kv-cache-dtype fp8"
+echo "[PASS] Local RTX 4050 6GB CUDA and Cloud L4 FP8 profiles validated."
+
+python3 "${SCRIPT_DIR}/eval_thai_quality.py" --simulate >/dev/null
+pytest "${SCRIPT_DIR}/eval_thai_quality.py" -v
+echo "[PASS] Quantization Quality Eval Gate (eval_thai_quality.py) verified."
+
 # 4. Run benchmark suite simulation & verify physics + Unit Economics output
 grep -q -- "--backend" "${SCRIPT_DIR}/run_benchmark_suite.sh"
+grep -q -- "--api-key" "${SCRIPT_DIR}/run_benchmark_suite.sh"
+grep -q -- "--metrics-url" "${SCRIPT_DIR}/run_benchmark_suite.sh"
 BENCH_OUT="$(bash "${SCRIPT_DIR}/run_benchmark_suite.sh" --simulate)"
 echo "${BENCH_OUT}" | grep -q "C: AWQ+APC+Tune"
 echo "${BENCH_OUT}" | grep -q "56.0"

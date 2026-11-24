@@ -369,7 +369,6 @@ class TestTier2Boundaries(unittest.TestCase):
                 continue
 
             test_script = "\n".join(clean_lines)
-            proc = run_cmd(["bash", "-n"], env={"AI_INFRA_REPO_ROOT": str(REPO_ROOT)})
             # We run bash -n via stdin using subprocess.run directly
             import subprocess
             p = subprocess.run(
@@ -472,7 +471,10 @@ class TestTier2Boundaries(unittest.TestCase):
             with tarfile.open(tar_path, "r:gz") as src, tarfile.open(mock_tar, "w:gz") as dst:
                 for member in src.getmembers():
                     if "FULL_MANUSCRIPT.md" not in member.name:
-                        dst.addfile(member, src.extractfile(member))
+                        if member.isfile():
+                            dst.addfile(member, src.extractfile(member))
+                        else:
+                            dst.addfile(member)
 
             proc = run_cmd([sys.executable, str(smoke_script), "--archive", str(mock_tar)])
             if proc.returncode == 0:
@@ -514,7 +516,10 @@ class TestTier2Boundaries(unittest.TestCase):
                         ti.mode = member.mode
                         dst.addfile(ti, io.BytesIO(injected))
                     else:
-                        dst.addfile(member, src.extractfile(member))
+                        if member.isfile():
+                            dst.addfile(member, src.extractfile(member))
+                        else:
+                            dst.addfile(member)
 
             proc = run_cmd([sys.executable, str(smoke_script), "--archive", str(mock_tar)])
             if proc.returncode == 0:

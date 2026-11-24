@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""Portable Make Runner Shim (`scripts/make`) for minimal Linux/WSL2 hosts without GNU make."""
+
+from __future__ import annotations
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+MAKEFILE_TARGETS = {
+    "help": "Show available Makefile targets",
+    "init-cache": "Create host HF_HOME cache directory",
+    "check-env": "Run hardware, CLI, and repo structure checks",
+    "verify-structure": "Verify canonical chapter and lab files",
+    "verify-static": "Run all offline static verification suites",
+    "verify-cluster": "Run cluster runtime verification suites",
+    "verify-all": "Alias of verify-static",
+    "verify-container": "Validate DevContainer and Compose configurations offline",
+    "verify-archive": "Smoke-test portable handbook archives",
+    "verify-aws-optional": "Verify Optional AWS Cloud Track OpenTofu config",
+    "package": "Build portable .tar.gz and .zip archives",
+    "build-handbook": "Compile and validate dist/FULL_MANUSCRIPT.md",
+    "clean-cache": "Clean /tmp/ai-infra-hf-cache",
+}
+
+REQUIRED_STRUCTURE = [
+    "README.md",
+    "SPEC_AND_STYLE_GUIDE.md",
+    "PORTABILITY_AND_QUICKSTART.md",
+    "Makefile",
+    "chapters/00-onboarding-and-setup.md",
+    "chapters/01-foundations-containers-iac.md",
+    "chapters/02-kubernetes-gpu-orchestration.md",
+    "chapters/03-vllm-serving-optimization.md",
+    "chapters/04-ai-gateway-governance.md",
+    "chapters/05-observability-autoscaling-sre.md",
+    "chapters/06-capstone-siamshield-ai.md",
+    "labs/m1-foundations/verify_m1.sh",
+    "labs/m2-k8s-gpu/verify_m2.sh",
+    "labs/m3-vllm/verify_m3.sh",
+    "labs/m4-gateway/verify_m4.sh",
+    "labs/m5-observability-sre/verify_m5.sh",
+    "labs/m6-capstone-siamshield/verify_capstone.sh",
+    "labs/optional-cloud-aws/verify_aws_optional.sh",
+    "dist",
+]
+
+
+def parse_declared_targets(makefile_path: Path) -> set[str]:
+    if not makefile_path.is_file():
+        return set(MAKEFILE_TARGETS)
+    text = makefile_path.read_text(encoding="utf-8")
+    return set(re.findall(r"^([a-zA-Z0-9_-]+)\s*:", text, re.MULTILINE))
+
+
+def run_step(cmd: list[str], cwd: Path, dry_run: bool, env: dict[str, str] | None = None) -> int:
+    if dry_run:
+        print(f"[DRY-RUN] {' '.join(cmd)}")
+        return 0
+    merged_env = os.environ.copy()
+    if env:
+        merged_env.update(env)
+    proc = subprocess.run(cmd, cwd=cwd, env=merged_env)
+    return proc.returncode
+
+
+def execute_target(target: str, cwd: Path, repo_root: Path, dry_run: bool) -> int:
+    scripts_dir = repo_root / "scripts"
+    host_cache = Path("/tmp/ai-infra-hf-cache")
+
+    if target == "help":
+        print("AI Infrastructure & Platform Engineering Handbook — Portable Make Runner")
+        for name, desc in MAKEFILE_TARGETS.items():
+            print(f"  {name:<20} {desc}")
+        return 0
+
+    if target == "init-cache":
+        if dry_run:
+            print(f"[DRY-RUN] mkdir -p {host_cache} && chmod 777 {host_cache}")
+            return 0
+        host_cache.mkdir(parents=True, exist_ok=True)
+        try:
+            os.chmod(host_cache, 0o777)
+        except OSError:
+            pass
+        print(f"[OK] Shared Hugging Face cache directory ready at: {host_cache}")
+        return 0
+
+    if target == "check-env":
+        if execute_target("init-cache", cwd, repo_root, dry_run) != 0:
+            return 1
+        return run_step(["bash", str(scripts_dir / "check-env.sh")], cwd if (cwd / "scripts").is_dir() else repo_root, dry_run)
+
+    if target == "verify-structure":
+        if dry_run:
+            print(f"[DRY-RUN] Checking {len(REQUIRED_STRUCTURE)} canonical paths in {cwd}")
+            return 0
+        missing = 0
+        for rel in REQUIRED_STRUCTURE:
+            exists = (cwd / rel).exists()
+            status = "[OK]" if exists else "[MISSING]"
+            print(f"  * {rel:<48} : {status}")
+            if not exists:
+                missing = 1
+        if missing:
+            print("[FAIL] Missing required canonical handbook files.", file=sys.stderr)
+            return 1
+        print("[SUCCESS] Canonical handbook structure verified.")
+        return 0
+
+    if target == "verify-container":
+        return run_step([sys.executable, str(scripts_dir / "validate_container_config.py")], cwd, dry_run)
+
+    if target == "package":
+        return run_step([sys.executable, str(scripts_dir / "package_handbook.py")], repo_root, dry_run)
+
+    if target == "verify-archive":
+        if execute_target("package", cwd, repo_root, dry_run) != 0:
+            return 1
+        return run_step([sys.executable, str(scripts_dir / "smoke_test_archive.py")], repo_root, dry_run)
+
+    if target == "verify-aws-optional":
+        return run_step(["bash", str(repo_root / "labs/optional-cloud-aws/verify_aws_optional.sh")], repo_root, dry_run)
+
+    if target in ("verify-static", "verify-all"):
+        for step in ("check-env", "verify-structure"):
+            rc = execute_target(step, cwd, repo_root, dry_run)
+            if rc != 0:
+                return rc
+        checks = [
+            (["bash", str(repo_root / "labs/m1-foundations/verify_m1.sh")], {"VERIFY_MODE": "static"}),
+            (["bash", str(repo_root / "labs/m2-k8s-gpu/verify_m2.sh")], {"VERIFY_MODE": "static"}),
+            (["bash", str(repo_root / "labs/m3-vllm/verify_m3.sh"), "--target", "examples"], {"VERIFY_MODE": "static"}),
+            (["bash", str(repo_root / "labs/m4-gateway/verify_m4.sh")], {"VERIFY_MODE": "static"}),
+            (["bash", str(repo_root / "labs/m5-observability-sre/verify_m5.sh")], {"VERIFY_MODE": "static"}),
+            (["bash", str(repo_root / "labs/m6-capstone-siamshield/verify_capstone.sh"), "--target", "examples"], {"VERIFY_MODE": "static"}),
+            (["bash", str(repo_root / "labs/optional-cloud-aws/verify_aws_optional.sh")], {"VERIFY_MODE": "static"}),
+        ]
+        for cmd, env in checks:
+            rc = run_step(cmd, repo_root, dry_run, env=env)
+            if rc != 0:
+                return rc
+        return 0
+
+    if target == "verify-cluster":
+        if execute_target("check-env", cwd, repo_root, dry_run) != 0:
+            return 1
+        checks = [
+            ["bash", str(repo_root / "labs/m1-foundations/verify_m1.sh")],
+            ["bash", str(repo_root / "labs/m2-k8s-gpu/verify_m2.sh")],
+            ["bash", str(repo_root / "labs/m4-gateway/verify_m4.sh")],
+            ["bash", str(repo_root / "labs/m5-observability-sre/verify_m5.sh")],
+            ["bash", str(repo_root / "labs/m6-capstone-siamshield/verify_capstone.sh")],
+        ]
+        for cmd in checks:
+            rc = run_step(cmd, repo_root, dry_run, env={"VERIFY_MODE": "cluster"})
+            if rc != 0:
+                return rc
+        return 0
+
+    if target == "build-handbook":
+        rc = run_step([sys.executable, str(scripts_dir / "build_manuscript.py")], repo_root, dry_run)
+        if rc != 0:
+            return rc
+        return run_step([sys.executable, str(scripts_dir / "build_manuscript.py"), "--check"], repo_root, dry_run)
+
+    if target == "clean-cache":
+        if dry_run:
+            print(f"[DRY-RUN] rm -rf {host_cache}/*")
+            return 0
+        if host_cache.is_dir():
+            for child in host_cache.iterdir():
+                if child.is_dir():
+                    shutil.rmtree(child, ignore_errors=True)
+                else:
+                    child.unlink(missing_ok=True)
+        print(f"[OK] Cleaned {host_cache}")
+        return 0
+
+    print(f"make: *** No rule to make target '{target}'. Stop.", file=sys.stderr)
+    return 2
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    dry_run = False
+    targets: list[str] = []
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ("-n", "--dry-run"):
+            dry_run = True
+        elif arg == "-C" and i + 1 < len(args):
+            os.chdir(args[i + 1])
+            i += 1
+        elif arg.startswith("-"):
+            pass
+        else:
+            targets.append(arg)
+        i += 1
+
+    if not targets:
+        targets = ["help"]
+
+    cwd = Path.cwd()
+    repo_root = Path(__file__).resolve().parent.parent
+    declared = parse_declared_targets(cwd / "Makefile" if (cwd / "Makefile").is_file() else repo_root / "Makefile")
+
+    for tgt in targets:
+        if tgt not in MAKEFILE_TARGETS and tgt not in declared:
+            print(f"make: *** No rule to make target '{tgt}'. Stop.", file=sys.stderr)
+            return 2
+        rc = execute_target(tgt, cwd, repo_root, dry_run)
+        if rc != 0:
+            return rc
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

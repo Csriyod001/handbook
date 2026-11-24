@@ -1,0 +1,146 @@
+# ==============================================================================
+# Module 4 (M4): Kubernetes Gateway API Inference Extension v1 & llm-d CRDs
+# Prerequisite: Install GAIE v1 CRDs & llm-d InferenceObjective CRDs first:
+#   kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.0.0/manifests.yaml
+# Also apply `k8s/gateway-api-route.yaml` to attach Gateway + HTTPRoute.
+# ==============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vllm-qwen-epp-sa
+  namespace: ai-platform
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vllm-qwen-epp-role
+  namespace: ai-platform
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["inference.networking.k8s.io"]
+    resources: ["inferencepools"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["llm-d.ai"]
+    resources: ["inferenceobjectives"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vllm-qwen-epp-binding
+  namespace: ai-platform
+subjects:
+  - kind: ServiceAccount
+    name: vllm-qwen-epp-sa
+    namespace: ai-platform
+roleRef:
+  kind: Role
+  name: vllm-qwen-epp-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-qwen-epp
+  namespace: ai-platform
+  labels:
+    app: vllm-qwen-epp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-qwen-epp
+  template:
+    metadata:
+      labels:
+        app: vllm-qwen-epp
+    spec:
+      serviceAccountName: vllm-qwen-epp-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      containers:
+        - name: epp
+          image: registry.k8s.io/gateway-api-inference-extension/epp:v1.0.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          args:
+            - "--pool-name=vllm-qwen-pool"
+            - "--pool-namespace=ai-platform"
+            - "--grpc-port=9002"
+          ports:
+            - containerPort: 9002
+              name: grpc
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-qwen-epp
+  namespace: ai-platform
+  labels:
+    app: vllm-qwen-epp
+spec:
+  selector:
+    app: vllm-qwen-epp
+  ports:
+    - name: grpc-ext-proc
+      port: 9002
+      targetPort: 9002
+      appProtocol: kubernetes.io/h2c
+---
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata:
+  name: vllm-qwen-pool
+  namespace: ai-platform
+spec:
+  targetPorts:
+    - number: 8000
+  selector:
+    matchLabels:
+      inference-pool: vllm-qwen-pool
+  endpointPickerRef:
+    name: vllm-qwen-epp
+    port:
+      number: 9002
+---
+apiVersion: llm-d.ai/v1
+kind: InferenceObjective
+metadata:
+  name: qwen25-7b-realtime
+  namespace: ai-platform
+  annotations:
+    ai.platform/tier: "critical-realtime"
+    ai.platform/model-name: "qwen2.5-7b"
+spec:
+  priority: 100
+  poolRefs:
+    - name: vllm-qwen-pool
+---
+apiVersion: llm-d.ai/v1
+kind: InferenceObjective
+metadata:
+  name: qwen25-7b-batch
+  namespace: ai-platform
+  annotations:
+    ai.platform/tier: "sheddable-batch"
+    ai.platform/model-name: "qwen2.5-7b-batch"
+spec:
+  priority: -10
+  poolRefs:
+    - name: vllm-qwen-pool

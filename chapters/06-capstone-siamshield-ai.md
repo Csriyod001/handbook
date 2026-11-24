@@ -68,7 +68,7 @@ flowchart TB
         end
         Redis[("Redis 7 (redis-svc:6379)")]
         Postgres[("PostgreSQL 16 (postgres-svc:5432)")]
-        EPP["K8s Gateway API Inference Extension (EPP)\nInferencePool + InferenceModel\nSheds 'Sheddable' Batch when KV-Cache > 85%"]
+        EPP["K8s Gateway API Inference Extension (EPP v1.0.0)\nInferencePool v1 + llm-d InferenceObjective\nSheds Sheddable Batch (priority < 0) when KV-Cache > 85%"]
     end
 
     subgraph DataPlane["Model Serving & Storage Layer (1-2x NVIDIA L4 24GB / Mock vLLM)"]
@@ -148,7 +148,8 @@ $$\text{TTFT}_{\text{total}} = T_{\text{gateway\_auth\_pii}} + T_{\text{redis\_l
 labs/m6-capstone-siamshield/
 ├── Makefile                                    # [DoD #2] คำสั่งจัดการวงจรชีวิตโปรเจกต์จบครบวงจร (รวม create-secrets & verify-workspace)
 ├── k8s/
-│   └── siamshield-platform.yaml                # [DoD #2] Full Stack Manifest 24 Docs (Primary/Secondary แยก Pool, RBAC/Job, KEDA, /cache/huggingface)
+│   ├── siamshield-platform.yaml                # [DoD #2] Core Stack Manifest 15 Docs (Service labels ครบ, Non-root, Postgres Probe)
+│   └── siamshield-crds.yaml                    # [DoD #2] CRD Stack 9 Docs (EPP v1.0.0, GAIE v1 InferencePool, llm-d InferenceObjective, KEDA)
 ├── src/
 │   └── siamshield_simulator.py                 # [DoD #2 & #3] เอ็นจินจำลองและทดสอบ Two-Tier Platform + Multi-Fault Chaos
 ├── docs/
@@ -183,11 +184,11 @@ cp labs/m4-gateway/.env.example labs/m4-gateway/.env
 docker build -t mock-vllm-server:1.0.0 -f labs/m4-gateway/mock_vllm_server/Dockerfile labs/m4-gateway
 ```
 
-ไฟล์ `siamshield-platform.yaml` รวมทุกองค์ประกอบที่เราสร้างมาตั้งแต่บทที่ 1–5 เข้าไว้ใน Manifest เดียว (24 K8s Documents) ที่พร้อมสั่ง `kubectl apply -f` หลังสร้าง `Secret litellm-secrets` (สำหรับโหมด Local 16GB RAM ให้โหลดอิมเมจ `mock-vllm-server:1.0.0` เข้า `kind` ก่อน):
+ไฟล์ทั้งสองส่วน ได้แก่ `siamshield-platform.yaml` (**15 Core K8s Documents** ไม่ต้องพึ่ง CRDs) และ `siamshield-crds.yaml` (**9 CRD Documents**: GAIE v1 + `llm-d` + KEDA) รวมทุกองค์ประกอบตั้งแต่บทที่ 1–5 พร้อมสั่ง `kubectl apply -f` หลังสร้าง `Secret litellm-secrets` (สำหรับโหมด Local 16GB–32GB RAM ให้โหลดอิมเมจ `mock-vllm-server:1.0.0` เข้า `kind` ก่อน):
 - `PersistentVolumeClaim` ชื่อ `hf-model-cache-pvc` (`ReadWriteMany`, `storageClassName: standard` บน single-node `kind`; สำหรับ Cloud Multi-node ให้ใช้ RWX CSI เช่น EFS/Filestore) ผูกเข้ากับ `HF_HOME=/cache/huggingface` (+ `VLLM_CACHE_ROOT=/tmp/vllm-cache`)
-- `Deployment` และ `Service` ของ `vllm-primary-svc:8000` (`inference-pool: vllm-qwen-pool`) และ `vllm-secondary-svc:8000` (แยกป้ายเป็น `inference-pool: vllm-qwen-pool-secondary` เพื่อกันไม่ให้ EPP ดึง Standby Pool เข้าคิวหลัก) ใช้อิมเมจ `mock-vllm-server:1.0.0` แบบ Non-root `UID 10001`, `readOnlyRootFilesystem: true`, `/tmp` emptyDir, `terminationGracePeriodSeconds: 60` และ `preStop: sleep 5`
-- `ConfigMap` (`litellm-config` ที่มี `pdpa_guardrail.py`, `num_retries: 0`, `qwen2.5-7b-batch`), `PersistentVolumeClaim` (`postgres-data-pvc`), `Job` (`litellm-init-virtual-keys`), และ `Deployment`/`Service` ของ `litellm-gateway-svc:4000`, `redis-svc:6379`, `postgres-svc:5432`, พร้อม `ServiceAccount`/`Role`/`RoleBinding` สำหรับ `vllm-qwen-epp:9002` (`epp:v0.3.0`)
-- `InferencePool` (`vllm-qwen-pool`) และ `InferenceModel` แยกระหว่าง `siamshield-tier-realtime` (`modelName: qwen2.5-7b`, `criticality: Critical`) และ `siamshield-tier-batch` (`modelName: qwen2.5-7b-batch`, `criticality: Sheddable`)
+- `Deployment` และ `Service` (ติด label `app: vllm-serving` / `app: litellm-gateway` เพื่อให้ `ServiceMonitor` จับติด) ของ `vllm-primary-svc:8000` (`inference-pool: vllm-qwen-pool`) และ `vllm-secondary-svc:8000` (แยกป้ายเป็น `inference-pool: vllm-qwen-pool-secondary` เพื่อกันไม่ให้ EPP ดึง Standby Pool เข้าคิวหลัก) ใช้อิมเมจ `mock-vllm-server:1.0.0` แบบ Non-root `UID 10001`, `readOnlyRootFilesystem: true`, `/tmp` emptyDir, `terminationGracePeriodSeconds: 60` และ `preStop: sleep 5`
+- `ConfigMap` (`litellm-config` ที่มี `pdpa_guardrail.py`, `num_retries: 0`, `qwen2.5-7b-batch`), `PersistentVolumeClaim` (`postgres-data-pvc`), `Job` (`litellm-init-virtual-keys`), และ `Deployment`/`Service` ของ `litellm-gateway-svc:4000`, `redis-svc:6379`, `postgres-svc:5432`
+- ใน `siamshield-crds.yaml`: `ServiceAccount`/`Role`/`RoleBinding` + `Deployment`/`Service` ของ `vllm-qwen-epp:9002` (`epp:v1.0.0`), `InferencePool` (`inference.networking.k8s.io/v1`: `vllm-qwen-pool`), และ `InferenceObjective` (`llm-d.ai/v1`) แยกระหว่าง `siamshield-tier-realtime` (`priority: 100`) และ `siamshield-tier-batch` (`priority: -10`, Sheddable)
 - `KEDA ScaledObject` (`vllm-keda-scaler`) ที่สเกลตาม `vllm:num_requests_waiting > 5` (`metricType: AverageValue`) และ `vllm:kv_cache_usage_perc > 0.80` (`metricType: Value`) โดยกรองด้วย Label จริง `pod=~"vllm-primary-.*"`
 
 #### ขั้นตอนที่ 2: รันเอ็นจินจำลองและชุดทดสอบโปรเจกต์จบ (`src/siamshield_simulator.py`)
@@ -328,7 +329,7 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 - **สถาปัตยกรรมที่เราเลือกใช้ (Priority-Shaped Shared Pool + Warm Standby Failover):**
   - เราเปิดให้ทั้ง 2 การ์ดสามารถรับงานได้ภายใต้การควบคุม 3 ชั้น:
     1. **ที่ชั้น `LiteLLM Proxy`:** จำกัดโควตา RPM/TPM ของ `sk-batch-team` ไม่ให้กินความจุเกิน 30% ในช่วงเวลาทำการ
-    2. **ที่ชั้น `Gateway API Inference Extension (EPP)`:** กำหนด `InferenceModel` ของ Realtime เป็น `Critical` และของ Batch เป็น `Sheddable` เมื่อค่า `vllm:kv_cache_usage_perc` เกิน `85%` ตัว EPP จะสั่งตัดโหลด (Load Shedding `HTTP 429`) เฉพาะงาน Batch ทันทีเพื่อสงวนพื้นที่ให้ Realtime 100%
+    2. **ที่ชั้น `Gateway API Inference Extension (EPP)` + `llm-d`:** กำหนด `InferenceObjective` ของ Realtime เป็น `priority: 100` (Critical) และของ Batch เป็น `priority: -10` (Sheddable) เมื่อค่า `vllm:kv_cache_usage_perc` เกิน `85%` ตัว EPP จะสั่งตัดโหลด (Load Shedding `HTTP 429`) เฉพาะงาน Batch ทันทีเพื่อสงวนพื้นที่ให้ Realtime 100%
     3. **ที่ชั้น `vLLM` V1 Scheduler:** ตั้งค่า `--max-num-batched-tokens 2048` (Unified Chunked Prefill) เพื่อหั่น Prompt ยาวของงาน Batch ออกเป็นชิ้นย่อย ไม่ให้บล็อกเฟส Decode ของงาน Realtime
 
 ---
@@ -416,7 +417,7 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 
 ### 10.1 รายการไฟล์ส่งมอบใน [`labs/m6-capstone-siamshield/`](../labs/m6-capstone-siamshield/) (Deliverables)
 - `Makefile` — คำสั่งรวมสำหรับการเตรียม Local Environment (`create-secrets`), สร้าง/โหลดอิมเมจ, รัน Simulator, และตรวจประเมิน `verify` / `verify-workspace`
-- `k8s/siamshield-platform.yaml` — Full-Stack Kubernetes Manifests 24 Documents (`PVC x2`, `ConfigMap`, `vllm-primary`, `vllm-secondary` แยก Pool, `litellm-gateway`, `Job litellm-init-virtual-keys`, `ServiceAccount`/`Role`/`RoleBinding`/`vllm-qwen-epp`, `redis`, `postgres`, `InferencePool`, `InferenceModel`, `ScaledObject` — ไม่มี Hardcoded `Secret`)
+- `k8s/siamshield-platform.yaml` และ `k8s/siamshield-crds.yaml` — Full-Stack Kubernetes Manifests แยก Core Stack (15 Docs พร้อม `Service` labels `app: vllm-serving`/`app: litellm-gateway` เพื่อให้ `ServiceMonitor` จับติด) และ CRD Stack (9 Docs: `EPP v1.0.0`, `InferencePool` `v1`, `llm-d` `InferenceObjective`, `ScaledObject`) — ไม่มี Hardcoded `Secret`
 - `src/siamshield_simulator.py` — โปรแกรมจำลองและชุดทดสอบ `pytest` พิสูจน์ PDPA Redaction, Noisy Neighbor Isolation, Failover, และ KEDA Scaling
 - `docs/design-doc.md`, `docs/interview-defense-guide.md`, `docs/runbooks/capstone-runbook.md`, `docs/postmortems/capstone-postmortem.md` — แม่แบบ Starter Templates & เอกสารหลักฐาน DoD #1, #4 และ #5
 - `reports/capstone-optimization-report.md` — แม่แบบ Starter Template รายงานเปรียบเทียบ Baseline vs Optimized Two-Tier Performance (DoD #3)
@@ -425,7 +426,7 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 
 ### 10.2 เกณฑ์ผ่าน (Pass Criteria Checklist)
 - [ ] คะแนนจาก `verify_capstone.sh --target workspace` ได้ **100 / 100 คะแนน** (เกณฑ์ขั้นต่ำ >= 85 คะแนน) และไม่ติด Mandatory Auto-Fail ทั้ง 3 ข้อ
-- [ ] Manifest `k8s/siamshield-platform.yaml` ผ่าน `yaml.safe_load_all` ครบ 24 Documents, ใช้ `mock-vllm-server:1.0.0`, ตั้ง `runAsUser: 10001` & `readOnlyRootFilesystem: true`, ไม่มี Hardcoded `Secret`, และจับคู่ `ConfigMap litellm-config` ตรงกับ M4 100%
+- [ ] Manifests `k8s/siamshield-platform.yaml` (15 Core Docs + `Service` labels) และ `k8s/siamshield-crds.yaml` (9 GAIE v1 / `llm-d` / KEDA Docs) ผ่าน `yaml.safe_load_all`, ใช้ `mock-vllm-server:1.0.0`, ตั้ง `runAsUser: 10001` & `readOnlyRootFilesystem: true`, ไม่มี Hardcoded `Secret`, และจับคู่ `ConfigMap litellm-config` ตรงกับ M4 100%
 - [ ] ทดสอบ Two-Tier Isolation ผ่านจริง: `tier-realtime` รักษา SLO (`TTFT p95 < 800 ms`, `ITL p95 < 30 ms`) ขณะ `tier-batch` ถูกจำกัดด้วย `HTTP 429` และไม่มีเลขบัตร 13 หลักรั่วไหล
 
 ### 10.3 แหล่งเรียนรู้อ้างอิงประจำบทที่ 6 (Curated Verified Resources)

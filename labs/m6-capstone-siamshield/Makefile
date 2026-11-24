@@ -11,7 +11,7 @@ VERIFY_TARGET ?= examples
 
 .DEFAULT_GOAL := verify
 
-.PHONY: help init-cache build-images create-secrets simulate deploy-k8s verify verify-workspace
+.PHONY: help init-cache build-images create-secrets simulate deploy-core deploy-netpol deploy-crds deploy-k8s chaos-live verify verify-workspace
 
 help: ## แสดงคำสั่งทั้งหมดของโปรเจกต์จบ Project SiamShield AI
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
@@ -30,8 +30,19 @@ create-secrets: ## สร้าง Kubernetes Secret litellm-secrets จาก�
 simulate: init-cache ## รันเอ็นจินจำลอง Two-Tier Platform & Chaos Verification
 	@python3 src/siamshield_simulator.py
 
-deploy-k8s: init-cache ## ดีพลอยสแต็ก SiamShield AI ทั้งหมดลงคลัสเตอร์ Kubernetes (ai-platform)
+deploy-core: init-cache ## ดีพลอย Core Stack (Zero-CRD: Mock vLLM, LiteLLM, Redis, Postgres)
 	kubectl apply -f k8s/siamshield-platform.yaml
+
+deploy-netpol: ## ดีพลอย Zero-Trust NetworkPolicies จาก M4
+	kubectl apply -f ../m4-gateway/k8s/network-policies.yaml
+
+deploy-crds: ## ดีพลอย CRD Stack (GAIE v1 InferencePool, llm-d InferenceObjective, KEDA ScaledObject)
+	kubectl apply -f k8s/siamshield-crds.yaml
+
+deploy-k8s: deploy-core deploy-netpol deploy-crds ## ดีพลอยสแต็ก SiamShield AI ทั้งหมดลงคลัสเตอร์ Kubernetes (ai-platform)
+
+chaos-live: ## ยิง Live Chaos Test เข้าพอร์ต 8000/4000 (เพิ่ม --reset หลังจบ)
+	@python3 ../m5-observability-sre/chaos/trigger_incident.py --live --dry-run
 
 verify: init-cache ## รันสคริปต์ตรวจประเมิน (examples sample หรือ workspace ของผู้เรียน)
 	@VERIFY_MODE=$(VERIFY_MODE) bash verify_capstone.sh --target $(VERIFY_TARGET)

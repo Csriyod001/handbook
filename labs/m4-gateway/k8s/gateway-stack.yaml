@@ -1,11 +1,13 @@
 # ==============================================================================
-# Module 4 (M4): Kubernetes AI Gateway Stack & Inference Extension Manifests
+# Module 4 (M4): Kubernetes Core AI Gateway Stack (Zero-CRD Core Manifest)
 # Namespace: ai-platform
 # Includes:
 #   - vllm-primary-svc:8000 & vllm-secondary-svc:8000 (mock_vllm_server <80MB RAM)
 #   - redis-svc:6379 & postgres-svc:5432
-#   - litellm-gateway-svc:4000
-#   - Gateway API Inference Extension CRDs: InferencePool & InferenceModel
+#   - litellm-gateway-svc:4000 (LiteLLM Proxy + PDPA Guardrail ConfigMap + Init Job)
+# Note: Gateway API Inference Extension v1 (InferencePool + llm-d InferenceObjective)
+#       and NetworkPolicies are separated into `inference-extension-v1.yaml` and
+#       `network-policies.yaml` so core deployment never fails on clusters without CRDs.
 # ==============================================================================
 apiVersion: v1
 kind: Namespace
@@ -209,6 +211,10 @@ spec:
       containers:
         - name: redis
           image: redis:7.2-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 6379
           resources:
@@ -262,6 +268,8 @@ spec:
       containers:
         - name: postgres
           image: postgres:16-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 5432
           env:
@@ -279,12 +287,12 @@ spec:
               value: "litellm"
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "litellm", "-d", "litellm"]
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "litellm", "-d", "litellm"]
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 15
             periodSeconds: 10
           volumeMounts:
@@ -578,7 +586,11 @@ spec:
     spec:
       containers:
         - name: litellm
-          image: ghcr.io/berriai/litellm:main-v1.55.0
+          image: ghcr.io/berriai/litellm:main-v1.72.0-stable
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           args:
             - "--config"
             - "/etc/litellm/litellm_config.yaml"
@@ -678,131 +690,3 @@ spec:
                 -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
                 -H "Content-Type: application/json" \
                 -d '{"key_alias":"batch-team","rpm_limit":10,"tpm_limit":25000,"models":["qwen2.5-7b-batch"]}' || true
----
-# ==============================================================================
-# Kubernetes Gateway API Inference Extension: Endpoint Picker (EPP) & CRDs
-# Prerequisite: Install Gateway API Inference Extension CRDs before applying
-# InferencePool / InferenceModel (see Chapter 4 Section 4).
-# Also apply labs/m4-gateway/k8s/gateway-api-route.yaml to attach Gateway + HTTPRoute.
-# ==============================================================================
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: vllm-qwen-epp-sa
-  namespace: ai-platform
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: vllm-qwen-epp-role
-  namespace: ai-platform
-rules:
-  - apiGroups: [""]
-    resources: ["pods", "services"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["discovery.k8s.io"]
-    resources: ["endpointslices"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["inference.networking.x-k8s.io"]
-    resources: ["inferencepools", "inferencemodels"]
-    verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: vllm-qwen-epp-binding
-  namespace: ai-platform
-subjects:
-  - kind: ServiceAccount
-    name: vllm-qwen-epp-sa
-    namespace: ai-platform
-roleRef:
-  kind: Role
-  name: vllm-qwen-epp-role
-  apiGroup: rbac.authorization.k8s.io
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: vllm-qwen-epp
-  namespace: ai-platform
-  labels:
-    app: vllm-qwen-epp
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: vllm-qwen-epp
-  template:
-    metadata:
-      labels:
-        app: vllm-qwen-epp
-    spec:
-      serviceAccountName: vllm-qwen-epp-sa
-      containers:
-        - name: epp
-          image: registry.k8s.io/gateway-api-inference-extension/epp:v0.3.0
-          args:
-            - "--pool-name=vllm-qwen-pool"
-            - "--pool-namespace=ai-platform"
-            - "--grpc-port=9002"
-          ports:
-            - containerPort: 9002
-              name: grpc
-          resources:
-            requests:
-              cpu: "50m"
-              memory: "64Mi"
-            limits:
-              cpu: "200m"
-              memory: "128Mi"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: vllm-qwen-epp
-  namespace: ai-platform
-  labels:
-    app: vllm-qwen-epp
-spec:
-  selector:
-    app: vllm-qwen-epp
-  ports:
-    - name: grpc-ext-proc
-      port: 9002
-      targetPort: 9002
-      appProtocol: kubernetes.io/h2c
----
-apiVersion: inference.networking.x-k8s.io/v1alpha2
-kind: InferencePool
-metadata:
-  name: vllm-qwen-pool
-  namespace: ai-platform
-spec:
-  targetPortNumber: 8000
-  selector:
-    inference-pool: vllm-qwen-pool
-  extensionRef:
-    name: vllm-qwen-epp
----
-apiVersion: inference.networking.x-k8s.io/v1alpha2
-kind: InferenceModel
-metadata:
-  name: qwen25-7b-realtime
-  namespace: ai-platform
-spec:
-  modelName: qwen2.5-7b
-  criticality: Critical
-  poolRef:
-    name: vllm-qwen-pool
----
-apiVersion: inference.networking.x-k8s.io/v1alpha2
-kind: InferenceModel
-metadata:
-  name: qwen25-7b-batch
-  namespace: ai-platform
-spec:
-  modelName: qwen2.5-7b-batch
-  criticality: Sheddable
-  poolRef:
-    name: vllm-qwen-pool

@@ -1,0 +1,67 @@
+# ==============================================================================
+# Module 4 (M4) Mini-Lab: Zero-Trust Kubernetes NetworkPolicies (`ai-platform`)
+# Enforces that clients CANNOT bypass `litellm-gateway` (PDPA + Rate Limiting)
+# to hit `vllm-primary-svc`, `vllm-secondary-svc`, `redis-svc`, or `postgres-svc`.
+# Permits Gateway API / Envoy Data Plane (`envoy-gateway-system` / `kgateway-system`
+# / gateway-named pods), EPP, and Prometheus scraping from `monitoring` namespace.
+# Note: Kind's default CNI (`kindnetd`) does not enforce NetworkPolicies unless
+#       Calico or Cilium is installed on the cluster.
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vllm-serving-only-via-gateway-and-monitoring
+  namespace: ai-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: vllm-serving
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: litellm-gateway
+        - podSelector:
+            matchLabels:
+              app: vllm-qwen-epp
+        - podSelector:
+            matchLabels:
+              gateway.networking.k8s.io/gateway-name: ai-inference-gateway
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kgateway-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: state-stores-only-via-litellm-gateway
+  namespace: ai-platform
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: ["redis", "postgres"]
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: litellm-gateway
+      ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 5432

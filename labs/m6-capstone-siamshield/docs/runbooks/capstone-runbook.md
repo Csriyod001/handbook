@@ -22,7 +22,7 @@
 
 ### ขั้นที่ 2: ปกป้องทราฟฟิก `tier-realtime` ทันทีภายใน 3 นาที (Immediate Isolation & Failover)
 1. **กรณี `vllm:kv_cache_usage_perc > 0.85` หรือ `vllm:num_requests_waiting > 5`:**
-   - `<TODO: ระบุวิธีตรวจว่า EPP ทำ Load Shedding ให้ InferenceModel/siamshield-tier-batch (Sheddable) และวิธีลดโควตา batch-team>`
+   - `<TODO: ระบุวิธีตรวจว่า EPP ทำ Load Shedding ให้ InferenceObjective/siamshield-tier-batch (priority -10 / Sheddable) และวิธีลดโควตา batch-team>`
 2. **กรณีพอด `vllm-primary` ค้างหรือไม่ตอบสนอง:**
    - `<TODO: ระบุวิธีตรวจ Gateway Failover (num_retries: 0, stream_timeout: 3.0s) ไปยัง vllm-secondary-svc จาก Gateway Log / Response Header (`X-Sim-Fallback-Triggered: true` ในโหมด Simulator)>`
 

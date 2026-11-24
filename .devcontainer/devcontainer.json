@@ -1,0 +1,35 @@
+{
+  "name": "AI Infrastructure & Platform Engineering Handbook (2026 Edition)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+    "source=/tmp/ai-infra-hf-cache,target=/cache/huggingface,type=bind"
+  ],
+  "forwardPorts": [8000, 4000, 3000, 9090],
+  "portsAttributes": {
+    "8000": { "label": "vLLM / Inference Service" },
+    "4000": { "label": "LiteLLM AI Gateway" },
+    "3000": { "label": "Grafana Dashboard" },
+    "9090": { "label": "Prometheus Server" }
+  },
+  "containerEnv": {
+    "HF_HOME": "/cache/huggingface",
+    "VLLM_CACHE_ROOT": "/tmp/vllm-cache"
+  },
+  "postCreateCommand": "python3 scripts/make verify-static",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml",
+        "opentofu.vscode-opentofu"
+      ]
+    }
+  }
+}

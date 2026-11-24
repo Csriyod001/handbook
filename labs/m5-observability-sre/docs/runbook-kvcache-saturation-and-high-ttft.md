@@ -34,7 +34,7 @@
 ## 2. ขั้นตอนที่ 2: บรรเทาผลกระทบเฉพาะหน้าภายใน 3 นาที (Immediate Traffic Mitigation)
 
 - **กรณีที่ A — KEDA ขยายถึง `maxReplicaCount: 3` แล้วแต่คิวยังไม่ลด (Noisy Neighbor Batch Traffic):**
-  1. ตรวจสอบว่า Endpoint Picker (`EPP`) ตัดโหลดทราฟฟิก `criticality: Sheddable` ที่ `InferenceModel` แล้วหรือไม่
+  1. ตรวจสอบว่า Endpoint Picker (`EPP`) ตัดโหลดทราฟฟิก `Sheddable` (`priority: -10`) ที่ `InferenceObjective` (`llm-d.ai/v1`) แล้วหรือไม่
   2. ลดโควตา `rpm` / `tpm` ของ Virtual Key ทีม `batch-team` ชั่วคราวผ่าน `LiteLLM Proxy` Admin API (`http://litellm-gateway-svc:4000/key/update`) เพื่อสงวนทรัพยากรให้ `realtime-team`
 - **กรณีที่ B — พอดใหม่ค้างสถานะ `Pending` เนื่องจากสล็อต GPU ในคลัสเตอร์เต็ม:**
   1. ตรวจสอบสถานะ Spillover Routing ใน `litellm-gateway-svc:4000` ให้กระจายคำขอไปยัง `vllm-secondary-svc:8000` (`fallbacks: [{"qwen2.5-7b": ["qwen2.5-7b-secondary"]}]`)

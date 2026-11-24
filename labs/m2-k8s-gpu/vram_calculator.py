@@ -84,6 +84,14 @@ MODEL_CATALOG: Dict[str, ModelArchSpec] = {
         num_kv_heads=4,
         head_dim=128,
     ),
+    "Qwen/Qwen2.5-3B-Instruct": ModelArchSpec(
+        model_id="Qwen/Qwen2.5-3B-Instruct",
+        params_billion=3.09,
+        num_layers=36,
+        num_query_heads=16,
+        num_kv_heads=2,
+        head_dim=128,
+    ),
     "Qwen/Qwen2.5-0.5B-Instruct": ModelArchSpec(
         model_id="Qwen/Qwen2.5-0.5B-Instruct",
         params_billion=0.494,
@@ -175,9 +183,10 @@ def calculate_vram_sizing(
 
 
 def print_sizing_table() -> None:
-    """Print canonical GPU VRAM Sizing comparison table for NVIDIA L4 (24GB)."""
+    """Print canonical GPU VRAM Sizing comparison table for NVIDIA L4 (24GB) and RTX 4050 (6GB)."""
     llama8b = MODEL_CATALOG["meta-llama/Llama-3.1-8B-Instruct"]
     qwen7b = MODEL_CATALOG["Qwen/Qwen2.5-7B-Instruct"]
+    qwen3b = MODEL_CATALOG["Qwen/Qwen2.5-3B-Instruct"]
     qwen05b = MODEL_CATALOG["Qwen/Qwen2.5-0.5B-Instruct"]
 
     scenarios = [
@@ -218,6 +227,31 @@ def print_sizing_table() -> None:
             ),
         ),
         (
+            "Qwen2.5-7B (FP8 W+KV, S=4096, C=32)",
+            calculate_vram_sizing(
+                qwen7b,
+                weight_precision="fp8",
+                kv_precision="fp8",
+                seq_len=4096,
+                concurrent_seqs=32,
+                gpu_vram_gb=24.0,
+                gpu_memory_utilization=0.92,
+            ),
+        ),
+        (
+            "Qwen2.5-3B-AWQ (RTX4050 6GB, FP8 KV)",
+            calculate_vram_sizing(
+                qwen3b,
+                weight_precision="int4_awq",
+                kv_precision="fp8",
+                seq_len=2048,
+                concurrent_seqs=8,
+                gpu_vram_gb=6.0,
+                gpu_memory_utilization=0.85,
+                enforce_eager=True,
+            ),
+        ),
+        (
             "4x Time-Sliced Qwen2.5-0.5B (Eager Mode)",
             calculate_vram_sizing(
                 qwen05b,
@@ -234,10 +268,10 @@ def print_sizing_table() -> None:
     ]
 
     print("=" * 92)
-    print("  GPU VRAM Sizing & Capacity Report (Target GPU: NVIDIA L4 — 24.0 GB VRAM)")
+    print("  GPU VRAM Sizing & Capacity Report (NVIDIA L4 24GB & RTX 4050 6GB)")
     print("=" * 92)
     print(
-        f"{'Scenario':<40} | {'Weights':>7} | {'KV-Cache':>8} | {'Overhead':>8} | {'Total VRAM':>10} | {'Fits L4?'}"
+        f"{'Scenario':<40} | {'Weights':>7} | {'KV-Cache':>8} | {'Overhead':>8} | {'Total VRAM':>10} | {'Fits GPU?'}"
     )
     print("-" * 92)
     for label, res in scenarios:

@@ -9,6 +9,8 @@ set -euo pipefail
 
 MODE="simulate"
 SERVER_URL="http://localhost:8000"
+METRICS_URL=""
+API_KEY="${OPENAI_API_KEY:-}"
 MODEL="${MODEL:-Qwen/Qwen2.5-7B-Instruct-AWQ}"
 BACKEND="${BACKEND:-vllm}"
 GPU_HOURLY_COST="${GPU_HOURLY_COST:-0.85}"
@@ -29,6 +31,14 @@ while [[ $# -gt 0 ]]; do
       SERVER_URL="$2"
       shift 2
       ;;
+    --metrics-url)
+      METRICS_URL="$2"
+      shift 2
+      ;;
+    --api-key)
+      API_KEY="$2"
+      shift 2
+      ;;
     --model)
       MODEL="$2"
       shift 2
@@ -39,11 +49,13 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown argument: $1" >&2
-      echo "Usage: $0 [--simulate | --live] [--url http://localhost:8000] [--model MODEL_NAME] [--backend vllm|openai-chat]" >&2
+      echo "Usage: $0 [--simulate | --live] [--url http://localhost:8000] [--metrics-url http://localhost:8000] [--api-key KEY] [--model MODEL_NAME] [--backend vllm|openai-chat]" >&2
       exit 1
       ;;
   esac
 done
+
+METRICS_URL="${METRICS_URL:-${SERVER_URL}}"
 
 echo "================================================================================"
 echo " vLLM V1 Serving Benchmark Suite & Unit Economics Calculator"
@@ -55,7 +67,10 @@ if [[ "${MODE}" == "live" ]]; then
     echo "[FAIL] --live mode requires 'vllm' CLI installed in the active environment." >&2
     exit 1
   fi
-  echo "[LIVE BENCHMARK] Target Server: ${SERVER_URL} | Backend: ${BACKEND} | Model: ${MODEL}"
+  if [[ -n "${API_KEY}" ]]; then
+    export OPENAI_API_KEY="${API_KEY}"
+  fi
+  echo "[LIVE BENCHMARK] Target Server: ${SERVER_URL} | Metrics: ${METRICS_URL} | Backend: ${BACKEND} | Model: ${MODEL}"
   echo "[INFO] Ensure --model matches the served model name on ${SERVER_URL}."
   for conc in 1 8 16 32; do
     num_prompts=$((conc * 4))
@@ -79,8 +94,30 @@ if [[ "${MODE}" == "live" ]]; then
   done
 
   echo "--------------------------------------------------------------------------------"
-  echo "[LIVE METRICS] Scraping Prometheus V1 metrics from ${SERVER_URL}/metrics ..."
-  curl -s "${SERVER_URL}/metrics" | grep -E "vllm:(kv_cache_usage_perc|num_requests_waiting|prefix_cache_hits_total|prefix_cache_queries_total|num_preemptions_total|inter_token_latency_seconds|time_per_output_token_seconds)" || true
+  echo "[LIVE METRICS] Scraping Prometheus V1 metrics from ${METRICS_URL}/metrics ..."
+  METRICS_PAYLOAD="$(curl -s "${METRICS_URL}/metrics" || true)"
+  echo "${METRICS_PAYLOAD}" | grep -E "vllm:(kv_cache_usage_perc|num_requests_waiting|prefix_cache_hits_total|prefix_cache_queries_total|num_preemptions_total|inter_token_latency_seconds|time_per_output_token_seconds)" || true
+  METRICS_PAYLOAD="${METRICS_PAYLOAD}" python3 - <<'PYEOF'
+import os, re
+raw = os.environ.get("METRICS_PAYLOAD", "")
+def sum_metric(name):
+    total = 0.0
+    for line in raw.splitlines():
+        if line.startswith(name) and not line.startswith("#"):
+            parts = line.strip().split()
+            if parts:
+                try:
+                    total += float(parts[-1])
+                except ValueError:
+                    pass
+    return total
+hits = sum_metric("vllm:prefix_cache_hits_total")
+queries = sum_metric("vllm:prefix_cache_queries_total")
+if queries > 0:
+    print(f"[LIVE APC SUMMARY] hits={hits:.0f} tokens | queries={queries:.0f} tokens | Hit Rate = {(hits / queries) * 100.0:.1f}%")
+else:
+    print("[LIVE APC SUMMARY] prefix_cache_queries_total=0 (no prefix cache queries recorded yet)")
+PYEOF
   exit 0
 fi
 
@@ -113,6 +150,8 @@ rows = [
     ("C: AWQ+APC+Tune", 8,  280.0, 19.2,  495.0,  14.5, 88.2, ""),
     ("C: AWQ+APC+Tune",16,  390.0, 21.1,  960.0,  26.2, 88.9, ""),
     ("C: AWQ+APC+Tune",32,  640.0, 23.5, 1450.0,  48.5, 89.4, " (PASS SLA <800ms TTFT)"),
+    ("SEP", 0, 0, 0, 0, 0, 0, ""),
+    ("D: FP8+FP8KV",   32,  590.0, 24.8, 1380.0,  31.0, 89.4, " (Ada FP8 + 2x KV Capacity)"),
 ]
 
 print(f"Config          | Conc | TTFT p95 (ms) | ITL p95 (ms) | Throughput (tok/s) | KV Usage | Prefix Hit % | Cost/1M (${gpu_hourly_cost:.2f}/h @ {util * 100:.0f}% util)")

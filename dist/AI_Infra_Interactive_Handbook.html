@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Infrastructure &amp; Platform Engineering — Interactive Handbook &amp; Assessment Portal</title>
-  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <script src="./assets/tailwindcss.min.js"></script>
   <style>
     .code-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
     .code-scroll::-webkit-scrollbar-thumb { background: var(--border,#cbd5e1); border-radius: 9999px; }
@@ -26,14 +26,14 @@
               Project SiamShield AI • 5 DoDs
             </span>
             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--secondary,#e2e8f0)] text-[var(--secondary-foreground,#0f172a)] border border-[var(--border,#cbd5e1)]">
-              16GB Local ($0) + NVIDIA L4 (&lt;$10)
+              3-Tier Hybrid: 32GB/RTX 4050 ($0) + L4 / AWS Spot
             </span>
           </div>
           <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--foreground,#0f172a)]">
             AI Infrastructure &amp; Platform Engineering Handbook
           </h1>
           <p class="text-sm text-[var(--muted-foreground,#475569)] max-w-3xl">
-            คู่มือปฏิบัติการวิศวกรรมฉบับโต้ตอบ: สำรวจสถาปัตยกรรม M0–M6, ติดตามความก้าวหน้า W1–W12, คำนวณ GQA VRAM &amp; Break-even FinOps สด, ประเมิน 5 DoDs, และฝึกสอบสัมภาษณ์ทั้ง 28 ข้อ
+            คู่มือปฏิบัติการวิศวกรรมฉบับโต้ตอบ: สำรวจสถาปัตยกรรม M0–M6, ติดตามความก้าวหน้า W1–W12, คำนวณ GQA VRAM &amp; Break-even FinOps สด, ประเมิน 5 DoDs, และฝึกสอบสัมภาษณ์ทั้ง 29 ข้อ
           </p>
         </div>
 
@@ -51,7 +51,7 @@
           </div>
           <div class="bg-[var(--content,#f8fafc)] border border-[var(--border,#cbd5e1)] rounded-xl px-3.5 py-2.5 min-w-[115px]">
             <div class="text-xs text-[var(--muted-foreground,#475569)]">สัมภาษณ์คล่อง</div>
-            <div id="kpi-quiz" class="text-lg font-bold tabular-nums text-[var(--foreground,#0f172a)] mt-0.5">0/28</div>
+            <div id="kpi-quiz" class="text-lg font-bold tabular-nums text-[var(--foreground,#0f172a)] mt-0.5">0/29</div>
             <div id="kpi-quiz-pct" class="text-xs text-[var(--muted-foreground,#475569)] tabular-nums">0% Ready</div>
           </div>
         </div>
@@ -72,7 +72,7 @@
           <span>4. 5-DoD Rubric Self-Grader</span>
         </button>
         <button data-tab="interview" class="nav-tab inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors">
-          <span>5. Interview Flashcards (28 Q&amp;A)</span>
+          <span>5. Interview Flashcards (29 Q&amp;A)</span>
         </button>
       </nav>
     </header>
@@ -236,7 +236,7 @@
           ['CUDA MPS', 'แชร์ CUDA Context ร่วมกัน', 'ถ้า 1 โปรเซส GPU fault อาจล่มพ่วง', 'เหมาะกับงาน HPC/Latency ต่ำเป็นพิเศษ']
         ],
         localSteps: [
-          'รัน vram_calculator.py และ pytest 5/5 เพื่อคำนวณ Llama-3.1-8B (52.92GB OOM) vs Qwen2.5-7B-AWQ (14.43GB Fits L4)',
+          'รัน vram_calculator.py และ pytest 7/7 เพื่อคำนวณ Llama-3.1-8B (52.92GB OOM) vs Qwen2.5-7B-AWQ (14.43GB Fits L4) และ RTX 4050 6GB',
           'โหลด image ai-inference-service:1.0.0 เข้า Kind แล้วติดตั้ง fake-gpu-operator (4 Simulated GPUs)',
           'ดีพลอย Helm Chart ai-inference-service (Port 8000, HF_HOME PVC, preStop 5s, PriorityClass)'
         ],
@@ -279,10 +279,10 @@
           ['Config C (AWQ-Marlin + APC + Chunk 2048)', 'ขยาย KV Pool 4.76×, TTFT 640ms, ITL 23.5ms', 'Perplexity เปลี่ยนเล็กน้อย (<1%)', 'Throughput 1,450 tok/s ($0.33/1M @50% util, คุ้มกว่า API)']
         ],
         localSteps: [
-          'ทดสอบคำสั่ง Baseline & Optimized ในโหมด --local-cpu --dry-run (Qwen2.5-0.5B + VLLM_CPU_KVCACHE_SPACE=1 + HF_HOME=/tmp/ai-infra-hf-cache)',
-          'รันชุดจำลอง Benchmark & FinOps Suite ด้วย --simulate เพื่อเปรียบเทียบ Config A, B, C'
+          'ทดสอบคำสั่ง Baseline & Optimized ในโหมด --local-cpu และ --local-rtx4050 (RTX 4050 6GB: Qwen2.5-3B-AWQ + FP8 KV)',
+          'รันชุดจำลอง Benchmark & FinOps Suite (--simulate) และตรวจคุณภาพภาษาไทยด้วย eval_thai_quality.py --simulate'
         ],
-        localCmd: `cd ${REPO_BASE}\nbash labs/m3-vllm/start_vllm_baseline.sh --local-cpu --dry-run\nbash labs/m3-vllm/start_vllm_optimized.sh --local-cpu --dry-run\nbash labs/m3-vllm/run_benchmark_suite.sh --simulate`,
+        localCmd: `cd ${REPO_BASE}\nbash labs/m3-vllm/start_vllm_baseline.sh --local-rtx4050 --dry-run\nbash labs/m3-vllm/start_vllm_optimized.sh --local-rtx4050 --dry-run\nbash labs/m3-vllm/run_benchmark_suite.sh --simulate\npython3 labs/m3-vllm/eval_thai_quality.py --simulate`,
         cloudSteps: [
           'รัน Config A (--no-enable-prefix-caching) เทียบ Config C (Qwen2.5-7B-Instruct-AWQ --quantization awq_marlin --gpu-memory-utilization 0.92 --max-num-batched-tokens 2048)',
           'ยิงโหลดทดสอบ Concurrency 1, 8, 16, 32 และเฝ้าดู metrics vLLM V1 ทั้ง 9 ตัว'
@@ -290,7 +290,7 @@
         cloudCmd: `cd ${REPO_BASE}\nbash labs/m3-vllm/start_vllm_baseline.sh --cloud-gpu\nbash labs/m3-vllm/start_vllm_optimized.sh --cloud-gpu`,
         chaosHighlight: 'Preemption Thrashing Storm: เมื่อ Concurrency=32 บน BF16 ค่า vllm:kv_cache_usage_perc แตะ 1.00 และ vllm:num_preemptions_total พุ่งขึ้น 42 ครั้ง ทำ TTFT p95 ทะลุ 6,120 ms — แก้ด้วย Quantization AWQ + util 0.92 + APC',
         optimizationGain: 'ที่ Concurrency=32: KV-Cache Pool 3.36GB → 16.00GB (4.76×), TTFT p95 6,120ms → 640ms (-89.5%), Throughput 390 → 1,450 tok/s (+3.7×), Break-even Utilization 93.7% → 27.1%',
-        files: ['labs/m3-vllm/start_vllm_baseline.sh', 'labs/m3-vllm/start_vllm_optimized.sh', 'labs/m3-vllm/run_benchmark_suite.sh', 'labs/m3-vllm/optimization-report-template.md', 'labs/m3-vllm/verify_m3.sh'],
+        files: ['labs/m3-vllm/start_vllm_baseline.sh', 'labs/m3-vllm/start_vllm_optimized.sh', 'labs/m3-vllm/run_benchmark_suite.sh', 'labs/m3-vllm/eval_thai_quality.py', 'labs/m3-vllm/optimization-report-template.md', 'labs/m3-vllm/verify_m3.sh'],
         svgType: 'm3'
       },
       {
@@ -304,7 +304,7 @@
         verifyCmd: 'bash labs/m4-gateway/verify_m4.sh',
         dods: ['DoD #1 (ADR-003)', 'DoD #2 (Gateway & Guardrail)', 'DoD #4 (Chaos Failover)'],
         gate: 'Milestone Gate 2 (จบ W8)',
-        summary: 'สร้าง AI Gateway หลายผู้เช่าด้วย LiteLLM Proxy + Kubernetes InferencePool/InferenceModel (EPP) พร้อมสูตรคะแนนจัดเส้นทางที่อ่าน kv_cache_usage_perc และ Prefix Cache จริง, ป้องกัน PII ตาม PDPA (เลขบัตรประชาชน 13 หลัก/เบอร์มือถือ) ในชั้น Pre-call ก่อน Redis Cache, ป้องกัน Retry Storm ด้วย stream_timeout: 3.0 และทดสอบครบด้วย mock_vllm_server (<80MB RAM)',
+        summary: 'สร้าง AI Gateway หลายผู้เช่าด้วย LiteLLM Proxy + Kubernetes GAIE v1 InferencePool / llm-d InferenceObjective (EPP v1.0.0) พร้อมสูตรคะแนนจัดเส้นทางที่อ่าน kv_cache_usage_perc และ Prefix Cache จริง, ป้องกัน PII ตาม PDPA (เลขบัตรประชาชน 13 หลัก/เบอร์มือถือ) ในชั้น Pre-call ก่อน Redis Cache, ป้องกัน Retry Storm ด้วย stream_timeout: 3.0 และ Zero-Trust NetworkPolicy',
         formulas: [
           {
             name: 'Endpoint Picker (EPP) Routing Score',
@@ -322,17 +322,17 @@
         localSteps: [
           'ตรวจสอบโครงสร้าง litellm_config.yaml (qwen2.5-7b -> vllm-primary-svc:8000 fallback -> vllm-secondary-svc:8000, stream_timeout: 3.0)',
           'รันชุดทดสอบ pytest 7/7 บน mock_vllm_server (<80MB RAM) และ pdpa_guardrail.py',
-          'ตรวจสอบความสอดคล้องของ Kubernetes 18 Documents ใน k8s/gateway-stack.yaml ด้วย verify_m4.sh'
+          'ตรวจสอบความสอดคล้องของ Core Stack 14 docs (k8s/gateway-stack.yaml), GAIE v1 CRDs (inference-extension-v1.yaml) และ NetworkPolicy'
         ],
         localCmd: `cd ${REPO_BASE}\n./scripts/pytest labs/m4-gateway/tests/test_gateway_resilience.py -v\nbash labs/m4-gateway/verify_m4.sh`,
         cloudSteps: [
-          'ชี้ vllm-primary-svc:8000 ไปยัง vLLM AWQ Pod บน NVIDIA L4 และติดตั้ง Gateway API Inference Extension controller (v0.3.0+)',
-          'ผูก EPP ให้ดึง Prometheus V1 metrics จริงจากพอร์ต 8000/metrics ของ Pod'
+          'ชี้ vllm-primary-svc:8000 ไปยัง vLLM AWQ Pod บน NVIDIA L4 และติดตั้ง Gateway API Inference Extension v1.0.0 + llm-d CRDs',
+          'ผูก EPP v1.0.0 ให้ดึง Prometheus V1 metrics จริงจากพอร์ต 8000/metrics ของ Pod และเปิด Zero-Trust NetworkPolicies'
         ],
-        cloudCmd: `docker build -t mock-vllm-server:1.0.0 labs/m4-gateway/mock_vllm_server/\nkubectl apply -f labs/m4-gateway/k8s/gateway-stack.yaml\nkubectl get pods,svc,inferencepool -n ai-platform`,
+        cloudCmd: `docker build -t mock-vllm-server:1.0.0 -f labs/m4-gateway/mock_vllm_server/Dockerfile labs/m4-gateway\nkubectl apply -f labs/m4-gateway/k8s/gateway-stack.yaml\nkubectl apply -f labs/m4-gateway/k8s/network-policies.yaml\nkubectl apply -f labs/m4-gateway/k8s/inference-extension-v1.yaml`,
         chaosHighlight: 'Drill #1: ฉีด latency 5,000ms ที่ Primary (> stream_timeout 3.0s) ระบบสลับไป Secondary อัตโนมัติ (Availability 100%) · Drill #2: batch-team โดนสกัดด้วย HTTP 429 และเลขบัตร 1-1007-01234-56-1 ถูก Mask ก่อนเข้า Cache & Model 100%',
         optimizationGain: 'p99 TTFT ลดจาก 4,850ms เหลือ 720ms (-85.2%), Primary Blackhole Failover 100% ใน ~3s (จากเดิม Timeout 60s), PDPA Leakage 0%, Capacity เพิ่มจาก Redis +33.3% (ที่ Hit 25%)',
-        files: ['labs/m4-gateway/mock_vllm_server/app.py', 'labs/m4-gateway/mock_vllm_server/pdpa_guardrail.py', 'labs/m4-gateway/litellm_config.yaml', 'labs/m4-gateway/k8s/gateway-stack.yaml', 'labs/m4-gateway/tests/test_gateway_resilience.py'],
+        files: ['labs/m4-gateway/mock_vllm_server/app.py', 'labs/m4-gateway/mock_vllm_server/pdpa_guardrail.py', 'labs/m4-gateway/litellm_config.yaml', 'labs/m4-gateway/k8s/gateway-stack.yaml', 'labs/m4-gateway/k8s/inference-extension-v1.yaml', 'labs/m4-gateway/k8s/network-policies.yaml', 'labs/m4-gateway/tests/test_gateway_resilience.py'],
         svgType: 'm4'
       },
       {
@@ -406,19 +406,19 @@
           ['Priority-Shaped Shared Pool + EPP + Chunked Prefill', 'HA 100%, Fleet Util 75–88%, Cutoff เฉพาะ Batch @ KV>85%', 'ต้องปรับจูนครบ 4 ชั้น (Gateway+EPP+vLLM+KEDA)', 'สถาปัตยกรรมที่เลือกใช้จริงใน Project SiamShield AI']
         ],
         localSteps: [
-          'ตรวจสอบ 20 Kubernetes Documents ใน k8s/siamshield-platform.yaml (PVC HF_HOME, Non-root, PDPA ConfigMap, InferencePool/Model, KEDA)',
+          'ตรวจสอบ Core Stack 15 docs (k8s/siamshield-platform.yaml พร้อม Service labels) และ CRD Stack 9 docs (k8s/siamshield-crds.yaml: GAIE v1 + llm-d + KEDA)',
           'รัน siamshield_simulator.py จำลอง 5 ด่านครบวงจร (VRAM/FinOps, PDPA Redact, Two-Tier Batch Flood Isolation, Failover 59ms, KEDA 1→3 pods)',
           'รัน verify_capstone.sh ประเมินคะแนนครบทั้ง 5 DoDs (ต้องได้ >= 85/100 คะแนนและไม่ติด Auto-Fail ทั้ง 3 ข้อ)'
         ],
         localCmd: `cd ${REPO_BASE}\npython3 labs/m6-capstone-siamshield/src/siamshield_simulator.py\nbash labs/m6-capstone-siamshield/verify_capstone.sh`,
         cloudSteps: [
-          'ดีพลอย Primary & Secondary vLLM AWQ จาก Helm M2 + OpenTofu M1 แล้ว apply k8s/siamshield-platform.yaml (บนโหนด GPU ไม่มีโหนดสำรองให้ปรับ maxSurge: 0, maxUnavailable: 1)',
+          'ดีพลอย Primary & Secondary vLLM AWQ จาก Helm M2 + OpenTofu M1 (หรือ AWS g6.xlarge Spot ใน labs/optional-cloud-aws/) แล้ว apply siamshield-platform.yaml + siamshield-crds.yaml',
           'ยิงทดสอบผ่านพอร์ต 4000 ของ litellm-gateway-svc ด้วย --backend openai-chat แล้วทำลายทรัพยากรด้วย tofu destroy ทันทีหลังบันทึกผล'
         ],
-        cloudCmd: `kubectl apply -f ${REPO_BASE}/labs/m6-capstone-siamshield/k8s/siamshield-platform.yaml\nbash labs/m3-vllm/run_benchmark_suite.sh --live --url http://localhost:4000 --backend openai-chat`,
+        cloudCmd: `kubectl apply -f ${REPO_BASE}/labs/m6-capstone-siamshield/k8s/siamshield-platform.yaml\nkubectl apply -f ${REPO_BASE}/labs/m6-capstone-siamshield/k8s/siamshield-crds.yaml\nbash labs/m3-vllm/run_benchmark_suite.sh --live --url http://localhost:4000 --backend openai-chat`,
         chaosHighlight: 'The Perfect Storm (Multi-Fault Compound Incident): Batch Flood + โจมตีเลขบัตรประชาชน + Primary Blackhole (250ms+) + KV-Cache ทะลุ 91% พร้อมกัน → Gateway กวาด PII เป็น <THAI_ID_REDACTED>, สกัด Batch ที่ HTTP 429, Failover ไป Secondary ใน ~59ms และ KEDA ขยาย Primary 1→3 pods ฟื้นฟูครบ 100%',
         optimizationGain: 'ที่โหลดผสม Realtime + Batch: Realtime TTFT p95 4,180ms → 640ms (-84.7%), ITL p95 86ms → 23.5ms (-72.7%), Failover 60,000ms → 59.8ms, PDPA Leakage 100% → 0.0%, ต้นทุน $1.12 → $0.33 / 1M Tokens',
-        files: ['labs/m6-capstone-siamshield/Makefile', 'labs/m6-capstone-siamshield/k8s/siamshield-platform.yaml', 'labs/m6-capstone-siamshield/src/siamshield_simulator.py', 'labs/m6-capstone-siamshield/docs/design-doc.md', 'labs/m6-capstone-siamshield/reports/capstone-optimization-report.md', 'labs/m6-capstone-siamshield/docs/interview-defense-guide.md'],
+        files: ['labs/m6-capstone-siamshield/Makefile', 'labs/m6-capstone-siamshield/k8s/siamshield-platform.yaml', 'labs/m6-capstone-siamshield/k8s/siamshield-crds.yaml', 'labs/m6-capstone-siamshield/src/siamshield_simulator.py', 'labs/m6-capstone-siamshield/docs/design-doc.md', 'labs/m6-capstone-siamshield/reports/capstone-optimization-report.md', 'labs/m6-capstone-siamshield/docs/interview-defense-guide.md', 'labs/optional-cloud-aws/README.md'],
         svgType: 'm6'
       }
     ];
@@ -431,7 +431,7 @@
       { week: 'W5', module: 'M3', gate: 'gate2', title: 'vLLM V1 Internals, PagedAttention & Baseline CPU/GPU', cmd: 'bash labs/m3-vllm/start_vllm_baseline.sh --local-cpu --dry-run', deliverables: 'เข้าใจ APIServer/EngineCore, V1 Defaults (APC + Chunked Prefill), RECOMPUTE Preemption และ Baseline (--no-enable-prefix-caching)' },
       { week: 'W6', module: 'M3', gate: 'gate2', title: 'Quantization (AWQ/FP8), APC & Unit Economics Report', cmd: 'bash labs/m3-vllm/verify_m3.sh', deliverables: 'start_vllm_optimized.sh (4.76× KV Pool), run_benchmark_suite.sh --simulate (Break-even 27.1%), optimization-report-template.md' },
       { week: 'W7', module: 'M4', gate: 'gate2', title: 'Enterprise AI Gateway (LiteLLM), Redis & Fallbacks', cmd: './scripts/pytest labs/m4-gateway/tests/test_gateway_resilience.py -v', deliverables: 'mock_vllm_server (<80MB, 9 V1 metrics), litellm_config.yaml (Virtual Keys, Redis Cache, stream_timeout: 3.0)' },
-      { week: 'W8', module: 'M4', gate: 'gate2', title: 'K8s Inference Extension (EPP), PDPA Guardrails & Gate 2', cmd: 'bash labs/m4-gateway/verify_m4.sh', deliverables: 'pdpa_guardrail.py (<THAI_ID_REDACTED> Pre-call), k8s/gateway-stack.yaml (18 docs + InferencePool/EPP), ADR-003 & Gate 2 ผ่าน 100%' },
+      { week: 'W8', module: 'M4', gate: 'gate2', title: 'K8s Inference Extension (EPP), PDPA Guardrails & Gate 2', cmd: 'bash labs/m4-gateway/verify_m4.sh', deliverables: 'pdpa_guardrail.py (<THAI_ID_REDACTED> Pre-call), k8s/gateway-stack.yaml (14 docs) + inference-extension-v1.yaml (8 docs: GAIE v1/llm-d) + network-policies.yaml, ADR-003 & Gate 2 ผ่าน 100%' },
       { week: 'W9', module: 'M5', gate: 'gate3', title: 'AI Observability: Prometheus, Grafana & DCGM Telemetry', cmd: 'python3 -c "import json; json.load(open(\'labs/m5-observability-sre/grafana-dashboard-vllm-v1.json\'))"', deliverables: 'แยก SM_ACTIVE vs DRAM_ACTIVE vs GPU_UTIL, grafana-dashboard-vllm-v1.json (ITL fallback + 1e-9 clamp), OTel GenAI schema' },
       { week: 'W10', module: 'M5', gate: 'gate3', title: 'KEDA Autoscaling, Chaos Drill, Runbook & Postmortem', cmd: 'bash labs/m5-observability-sre/verify_m5.sh', deliverables: 'keda-vllm-scaledobject.yaml (Queue+KV triggers), prometheus-alert-rules.yaml (Burn Rate 14.4×), chaos/trigger_incident.py, Runbook & PM' },
       { week: 'W11', module: 'M6', gate: 'gate3', title: 'Capstone Design Doc & SiamShield Full-Stack', cmd: 'python3 labs/m6-capstone-siamshield/src/siamshield_simulator.py', deliverables: 'docs/design-doc.md (3 Decisions + Trade-offs), k8s/siamshield-platform.yaml (20 K8s docs), Two-Tier Critical vs Sheddable Isolation' },
@@ -509,8 +509,8 @@
         id: 'dod5',
         code: 'DoD #5',
         title: 'Mid-Level Architecture Defense & Interview Readiness',
-        artifact: 'labs/m6-capstone-siamshield/docs/interview-defense-guide.md + คำถาม 28 ข้อ',
-        remediate: 'ฝึกใช้ Tab 5 (Interview Flashcards) ทบทวนคำถามทั้ง 28 ข้อจนตอบคล่องครบทุกบท',
+        artifact: 'labs/m6-capstone-siamshield/docs/interview-defense-guide.md + คำถาม 29 ข้อ',
+        remediate: 'ฝึกใช้ Tab 5 (Interview Flashcards) ทบทวนคำถามทั้ง 29 ข้อจนตอบคล่องครบทุกบท',
         criteria: 'อธิบายเหตุผล Why & Trade-offs, คำนวณ VRAM/Unit Economics สด, และอธิบาย End-to-End Request Lifecycle รวมถึงวิธีสเกล 2 → 20 GPUs ได้ชัดเจน',
         maxPts: 15,
         levels: [
@@ -528,7 +528,7 @@
       { id: 'af_metrics', label: 'ใช้ชื่อ Prometheus Metric เก่าของ vLLM V0 (เช่น vllm:gpu_cache_usage_perc) หรือตั้ง KEDA สเกลจาก CPU เพียงอย่างเดียว' }
     ];
 
-    // All 28 Interview Questions & Strong Mid-Level Model Answers from Chapters 01–06
+    // All 29 Interview Questions & Strong Mid-Level Model Answers from Chapters 01–06
     const INTERVIEW_QUESTIONS = [
       // Module 1 (4 questions)
       {
@@ -650,10 +650,10 @@
       // Module 4 (4 questions)
       {
         id: 'q15', module: 'M4', topic: 'EPP vs Round-Robin / Least-Conn',
-        question: 'ทำไมการกระจายโหลดด้วย Kubernetes Service (Round-Robin) หรือ NGINX (Least-Connections) จึงมักทำให้ค่า p99 Latency ของคลัสเตอร์ vLLM พุ่งสูงผิดปกติ? และสถาปัตยกรรม Kubernetes Gateway API Inference Extension (InferencePool, InferenceModel, Endpoint Picker) แก้ปัญหานี้อย่างไร?',
+        question: 'ทำไมการกระจายโหลดด้วย Kubernetes Service (Round-Robin) หรือ NGINX (Least-Connections) จึงมักทำให้ค่า p99 Latency ของคลัสเตอร์ vLLM พุ่งสูงผิดปกติ? และสถาปัตยกรรม Kubernetes Gateway API Inference Extension (InferencePool v1, llm-d InferenceObjective, Endpoint Picker) แก้ปัญหานี้อย่างไร?',
         points: [
           'ความล้มเหลวของ LB แบบเดิม: (1) Request Cost Asymmetry คำขอ 100 tok กับ 4,000 tok นับเป็น 1 Connection เท่ากันแต่กิน KV-Cache ต่างกัน 40×, (2) KV-Cache & Prefix Blindness ไม่รู้ว่าพอดไหน KV แตะ 98% หรือมี Prefix แคชชุดเดียวกันรออยู่',
-          'กลไก Gateway API Inference Extension: InferenceModel กำหนด Criticality (Critical vs Sheddable) บนกลุ่ม InferencePool ให้ Endpoint Picker (EPP ผ่าน ext_proc) อ่าน kv_cache_usage_perc, num_requests_waiting และ Prefix Cache Affinity เพื่อเลือก Pod ที่มีคะแนนสูงสุด รวมถึงตัด Sheddable Batch เมื่อคลัสเตอร์ตึง (>85% KV)'
+          'กลไก Gateway API Inference Extension (v1) + llm-d: แยก InferenceObjective (เดิมคือ InferenceModel กำหนด signed priority +100 Critical vs -10 Sheddable) บนกลุ่ม InferencePool ให้ Endpoint Picker (EPP ผ่าน ext_proc) อ่าน kv_cache_usage_perc, num_requests_waiting และ Prefix Cache Affinity เพื่อเลือก Pod ที่มีคะแนนสูงสุด รวมถึงตัด Sheddable Batch เมื่อคลัสเตอร์ตึง (>85% KV)'
         ]
       },
       {
@@ -727,7 +727,7 @@
         question: 'ในโปรเจกต์ SiamShield AI คุณมีงบเช่าการ์ดจอ NVIDIA L4 เพียง 2 ใบ แต่ต้องรองรับทั้งแชตบอตลูกค้า (tier-realtime ที่ห้ามช้าเกิน 800ms) และงานสรุปเอกสารหลังบ้าน (tier-batch ที่ส่งงานมาเป็นก้อนใหญ่) ทำไมคุณไม่แบ่งการ์ดจอใบที่ 1 ให้ Realtime และใบที่ 2 ให้ Batch แบบแยกขาดจากกันไปเลย?',
         points: [
           'ข้อเสียของ Hard Physical Split: (1) สูญเสีย High Availability (Single Point of Failure ถ้าการ์ด 1 พังหรือต้องอัปเดต ลูกค้า Realtime ล่มทันที), (2) Fleet Utilization ต่ำช่วงนอกเวลาทำการ (การ์ด 1 ว่างงานกลางคืนแต่ช่วยรับ Batch ไม่ได้)',
-          'สถาปัตยกรรมที่เลือก (Priority-Shaped Shared Pool): คุมโหลด 3 ชั้นให้ทั้ง 2 การ์ดรับงานร่วมกันได้อย่างปลอดภัย — (1) LiteLLM จำกัดโควตา batch-team, (2) EPP แยก InferenceModel Critical vs Sheddable ตัด Batch ทิ้งด้วย 429 ทันทีเมื่อ KV > 85%, (3) vLLM --max-num-batched-tokens 2048 หั่น Prompt ยาวของ Batch ไม่ให้บล็อก Realtime'
+          'สถาปัตยกรรมที่เลือก (Priority-Shaped Shared Pool): คุมโหลด 3 ชั้นให้ทั้ง 2 การ์ดรับงานร่วมกันได้อย่างปลอดภัย — (1) LiteLLM จำกัดโควตา batch-team, (2) EPP + llm-d แยก InferenceObjective (เดิม InferenceModel) priority +100 Critical vs -10 Sheddable ตัด Batch ทิ้งด้วย 429 ทันทีเมื่อ KV > 85%, (3) vLLM --max-num-batched-tokens 2048 หั่น Prompt ยาวของ Batch ไม่ให้บล็อก Realtime'
         ]
       },
       {
@@ -760,6 +760,14 @@
         points: [
           'เลือกฮาร์ดแวร์ตามโมเดลและคอขวด: ถ้ายังรัน 7B–8B (Quantized, Context 2k–4k) การ Scale-out แนวนอนด้วย L4/L40S ยังให้ Cost/1M Tokens ต่ำสุดและ Fault Isolation ดีที่สุด แต่ถ้าขยับเป็น 70B+ (ต้องใช้ NVLink Tensor Parallelism) หรือ Long-Context 32k–128k (ต้องการ HBM 2–3.35 TB/s) จึงย้ายพูลนั้นไป A100/H100 พร้อม Hardware MIG หรือ Disaggregated Serving',
           'Fleet FinOps ระดับ 20 GPUs: แบ่งเป็น Base Capacity 60% ใช้ Reserved/Committed Instances (ลดราคา C_hour ลง 35%–45% ดึงจุดคุ้มทุน Break-even จาก 27.1% ลงเหลือ ~16%) ร่วมกับ Burst Capacity 40% ที่ขยายด้วย KEDA+Karpenter Spot และมี Managed API เป็น Safety Net'
+        ]
+      },
+      {
+        id: 'q29', module: 'M3', topic: 'Disaggregated Prefill–Decode (PD) & Quantization Eval Gate',
+        question: 'บริษัทเริ่มให้บริการ Long-Context RAG (Prompt ยาว 32k tokens) จนทำให้ ITL ของแชตบอตกระตุกแม้ตั้ง --max-num-batched-tokens แล้ว และลูกค้าบ่นว่าโมเดล AWQ ตอบภาษาไทยเพี้ยนบางกรณี คุณจะออกแบบสถาปัตยกรรมและกระบวนการตรวจสอบอย่างไร?',
+        points: [
+          'แก้ Prefill Interference ด้วย Disaggregated Prefill–Decode (PD): แยก Cluster ออกเป็น Prefill Pool (จูน Compute-bound Throughput สำหรับ Prompt 32k) และ Decode Pool (จูน Memory-Bandwidth-bound รักษา ITL < 25ms) แล้วส่งต่อ KV-Cache ผ่าน RDMA/NIXL หรือ Shared KV Store (เช่น llm-d + LMCache)',
+          'แก้คุณภาพหลังบีบอัดด้วย Quantization Eval Gate: ห้ามวัดแค่ TTFT/TPS แต่ต้องรัน Automated Eval Gate วัด JSON Schema Validity และความถูกต้องภาษาไทย (eval_thai_quality.py) ก่อน Promote และหาก INT4-AWQ สูญเสียความแม่นยำ >2% บน Ada/Hopper ให้สลับไปใช้ Native FP8 (--quantization fp8 --kv-cache-dtype fp8)'
         ]
       }
     ];
@@ -1097,7 +1105,7 @@
 
       const fluentCount = INTERVIEW_QUESTIONS.filter((q) => state.quizFluent[q.id]).length;
       const fluentPct = Math.round((fluentCount / INTERVIEW_QUESTIONS.length) * 100);
-      document.getElementById('kpi-quiz').textContent = `${fluentCount}/28`;
+      document.getElementById('kpi-quiz').textContent = `${fluentCount}/${INTERVIEW_QUESTIONS.length}`;
       document.getElementById('kpi-quiz-pct').textContent = `${fluentPct}% Mastered`;
     }
 
@@ -1801,6 +1809,8 @@
                 <button data-calc-preset="llama8b_fp16" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--secondary,#e2e8f0)] text-[var(--secondary-foreground,#0f172a)] border border-[var(--border,#cbd5e1)] hover:opacity-90">Llama-3.1-8B FP16 (OOM Test)</button>
                 <button data-calc-preset="qwen7b_bf16" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--secondary,#e2e8f0)] text-[var(--secondary-foreground,#0f172a)] border border-[var(--border,#cbd5e1)] hover:opacity-90">Qwen2.5-7B BF16 Baseline</button>
                 <button data-calc-preset="qwen7b_awq" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:opacity-90">Qwen2.5-7B-AWQ Tuned</button>
+                <button data-calc-preset="qwen7b_fp8" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:opacity-90">L4 24GB: Qwen2.5-7B FP8 (W+KV)</button>
+                <button data-calc-preset="rtx4050_3b_awq" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/15 text-amber-600 border border-amber-500/30 hover:opacity-90">RTX 4050 6GB: Qwen2.5-3B-AWQ + FP8 KV</button>
                 <button data-calc-preset="timeslice_05b" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-500/15 text-sky-500 border border-sky-500/30 hover:opacity-90">4× Time-Slice Qwen 0.5B</button>
               </div>
             </div>
@@ -1817,6 +1827,7 @@
                 <label class="space-y-1 block">
                   <span class="font-semibold text-[var(--muted-foreground,#475569)]">GPU Hardware VRAM (GB)</span>
                   <select data-calc-field="gpuVramGb" class="w-full px-2.5 py-2 rounded-lg bg-[var(--content,#f8fafc)] border border-[var(--border,#cbd5e1)] text-[var(--foreground,#0f172a)] text-xs">
+                    <option value="6" ${Number(c.gpuVramGb) === 6 ? 'selected' : ''}>6 GB (NVIDIA RTX 4050 Laptop)</option>
                     <option value="16" ${Number(c.gpuVramGb) === 16 ? 'selected' : ''}>16 GB (NVIDIA T4)</option>
                     <option value="24" ${Number(c.gpuVramGb) === 24 ? 'selected' : ''}>24 GB (NVIDIA L4 / A10G)</option>
                     <option value="48" ${Number(c.gpuVramGb) === 48 ? 'selected' : ''}>48 GB (NVIDIA L40S)</option>
@@ -2092,7 +2103,7 @@
     }
 
     // =========================================================================
-    // 9. Render Tab 5: Interview Trade-off Flashcards & Quiz Mode (All 28 Q&A)
+    // 9. Render Tab 5: Interview Trade-off Flashcards & Quiz Mode (All 29 Q&A)
     // =========================================================================
     function getFilteredQuestions() {
       const qSearch = (state.quizSearch || '').trim().toLowerCase();
@@ -2121,15 +2132,15 @@
           <div class="bg-[var(--card,#ffffff)] border border-[var(--border,#cbd5e1)] rounded-2xl p-5 space-y-4">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h2 class="text-lg font-bold text-[var(--foreground,#0f172a)]">Mid-Level Interview Trade-off Flashcards &amp; Quiz Mode (ครบทั้ง 28 ข้อ)</h2>
-                <p class="text-xs text-[var(--muted-foreground,#475569)]">ดึงข้อมูลจากบทที่ 1–6 หัวข้อที่ 8 ครบทุกข้อ (ตอบคล่องแล้ว ${fluentTotal}/28 ข้อ)</p>
+                <h2 class="text-lg font-bold text-[var(--foreground,#0f172a)]">Mid-Level Interview Trade-off Flashcards &amp; Quiz Mode (ครบทั้ง ${INTERVIEW_QUESTIONS.length} ข้อ)</h2>
+                <p class="text-xs text-[var(--muted-foreground,#475569)]">ดึงข้อมูลจากบทที่ 1–6 หัวข้อที่ 8 ครบทุกข้อ (ตอบคล่องแล้ว ${fluentTotal}/${INTERVIEW_QUESTIONS.length} ข้อ)</p>
               </div>
               <div class="inline-flex rounded-xl p-1 bg-[var(--content,#f8fafc)] border border-[var(--border,#cbd5e1)] shrink-0">
                 <button data-quiz-mode="flashcard" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold ${state.quizMode === 'flashcard' ? 'bg-[var(--primary,#0284c7)] text-[var(--primary-foreground,#ffffff)]' : 'text-[var(--muted-foreground,#475569)]'}">
                   Flashcard / Quiz Mode
                 </button>
                 <button data-quiz-mode="list" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold ${state.quizMode === 'list' ? 'bg-[var(--primary,#0284c7)] text-[var(--primary-foreground,#ffffff)]' : 'text-[var(--muted-foreground,#475569)]'}">
-                  ดูทั้งหมด 28 ข้อ (Accordion)
+                  ดูทั้งหมด ${INTERVIEW_QUESTIONS.length} ข้อ (Accordion)
                 </button>
               </div>
             </div>
@@ -2138,7 +2149,7 @@
               <!-- Module Filters -->
               <div class="flex flex-wrap gap-1.5">
                 ${['ALL', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6'].map((mod) => {
-                  const cnt = mod === 'ALL' ? 28 : INTERVIEW_QUESTIONS.filter((x) => x.module === mod).length;
+                  const cnt = mod === 'ALL' ? INTERVIEW_QUESTIONS.length : INTERVIEW_QUESTIONS.filter((x) => x.module === mod).length;
                   const active = state.quizFilterMod === mod;
                   return `
                     <button data-quiz-mod="${mod}" class="px-2.5 py-1 rounded-lg text-xs font-semibold border ${
@@ -2172,7 +2183,7 @@
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                   <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-sky-500/15 text-sky-500 border border-sky-500/30">
-                    ${escapeHtml(currentQ.module)} · คำถามข้อที่ ${currentQ.id.replace('q', '')} / 28
+                    ${escapeHtml(currentQ.module)} · คำถามข้อที่ ${currentQ.id.replace('q', '')} / ${INTERVIEW_QUESTIONS.length}
                   </span>
                   <span class="text-xs font-semibold text-[var(--muted-foreground,#475569)]">${escapeHtml(currentQ.topic)}</span>
                 </div>
@@ -2401,6 +2412,10 @@
             Object.assign(state.calc, { preset: p, gpuVramGb: 24, gpuUtil: 0.85, paramsB: 7.615, weightPrec: 'fp16', kvPrec: 'fp16', layers: 28, kvHeads: 4, headDim: 128, seqLen: 8192, concurrency: 16, replicas: 1, enforceEager: false, gpuHourlyUsd: 0.85, throughputTokSec: 420, fleetUtilPct: 50, apiPricePer1M: 0.60 });
           } else if (p === 'qwen7b_awq') {
             Object.assign(state.calc, { preset: p, gpuVramGb: 24, gpuUtil: 0.92, paramsB: 7.615, weightPrec: 'int4_awq', kvPrec: 'fp16', layers: 28, kvHeads: 4, headDim: 128, seqLen: 4096, concurrency: 32, replicas: 1, enforceEager: false, gpuHourlyUsd: 0.85, throughputTokSec: 1450, fleetUtilPct: 50, apiPricePer1M: 0.60 });
+          } else if (p === 'qwen7b_fp8') {
+            Object.assign(state.calc, { preset: p, gpuVramGb: 24, gpuUtil: 0.92, paramsB: 7.615, weightPrec: 'fp8', kvPrec: 'fp8', layers: 28, kvHeads: 4, headDim: 128, seqLen: 4096, concurrency: 32, replicas: 1, enforceEager: false, gpuHourlyUsd: 0.85, throughputTokSec: 1380, fleetUtilPct: 50, apiPricePer1M: 0.60 });
+          } else if (p === 'rtx4050_3b_awq') {
+            Object.assign(state.calc, { preset: p, gpuVramGb: 6, gpuUtil: 0.85, paramsB: 3.09, weightPrec: 'int4_awq', kvPrec: 'fp8', layers: 36, kvHeads: 2, headDim: 128, seqLen: 2048, concurrency: 8, replicas: 1, enforceEager: true, gpuHourlyUsd: 0.10, throughputTokSec: 320, fleetUtilPct: 50, apiPricePer1M: 0.60 });
           } else if (p === 'timeslice_05b') {
             Object.assign(state.calc, { preset: p, gpuVramGb: 24, gpuUtil: 0.92, paramsB: 0.494, weightPrec: 'fp16', kvPrec: 'fp16', layers: 24, kvHeads: 2, headDim: 64, seqLen: 2048, concurrency: 16, replicas: 4, enforceEager: true, gpuHourlyUsd: 0.85, throughputTokSec: 980, fleetUtilPct: 50, apiPricePer1M: 0.60 });
           }

@@ -272,6 +272,15 @@ $$u_{\text{break-even}} = \frac{C_{\text{hour}} \times 1,000,000}{T_{\text{peak}
 
 ---
 
+### 3.5 สถาปัตยกรรม Inference ยุค 2026: Native FP8, Disaggregated PD, Multi-GPU TP/MoE & Agentic Serving
+เมื่อก้าวข้ามระดับ Single-GPU 7B ไปสู่ระบบ Production ขนาดใหญ่ตามแนวทางใน *AI Systems Performance Engineering* (Chris Fregly) และ *How to Scale Your Model* (Google DeepMind) มี 4 แนวคิดที่วิศวกร AI Platform ต้องเชี่ยวชาญ:
+1. **Native FP8 (Weights + KV-Cache) บน Ada Lovelace / Hopper:** การ์ด NVIDIA L4 และ RTX 4050 (Ada Lovelace) มี FP8 Tensor Cores ในตัว การรัน `--quantization fp8 --kv-cache-dtype fp8` ลดขนาด KV-Cache ต่อโทเคนลงอีก **50%** (จาก `56 KiB` เหลือ `28 KiB/token` สำหรับ Qwen2.5-7B) และช่วยรักษาความแม่นยำภาษาไทยและ JSON ได้ดีกว่า INT4 เมื่อเทียบกับ BF16
+2. **Disaggregated Prefill–Decode (PD) (`llm-d`, NVIDIA Dynamo, LMCache):** ในเวิร์กโหลดที่มี Prompt ยาว (8k–64k tokens) การประมวลผล Prefill จะกิน Compute นานและดึง **ITL** ของผู้ใช้อื่นที่กำลัง Decode อยู่ใน Batch เดียวกันให้กระตุก (**Prefill Interference**) วิธีแก้ระดับ Scale ใหญ่คือแยกพูลของพอด **Prefill Workers** ออกจาก **Decode Workers** แล้วส่งต่อ KV-Cache ผ่าน RDMA/NIXL หรือ LMCache
+3. **Multi-GPU Tensor Parallelism (TP) & Mixture-of-Experts (MoE):** สำหรับโมเดล 70B+ หรือ MoE (เช่น DeepSeek / Qwen-MoE) ที่เกิน 1 การ์ด เราแบ่งเลเยอร์ตามแนวกว้างด้วย `--tensor-parallel-size N` (ต้องการ NVLink เพราะทุก Decode step ต้องทำ `AllReduce`) หรือแยก Expert Parallelism (EP) เมื่อมีโหนดหลายเครื่อง
+4. **Agentic / Reasoning Serving & Quantization Eval Gate:** โมเดลยุค Reasoning / Tool-Calling สร้าง Output ยาวกว่าปกติ 5–10 เท่า ทำให้ Decode Memory Bandwidth และ KV-Cache Capacity กลายเป็นคอขวดหลัก และการเปลี่ยน Quantization ทุกครั้งต้องผ่าน **Eval Gate** ([`eval_thai_quality.py`](../labs/m3-vllm/eval_thai_quality.py)) ตามแนวทาง *AI Engineering* (Chip Huyen) เพื่อยืนยันว่าภาษาไทยและ Structured JSON ไม่เพี้ยน
+
+---
+
 ## 4. Hands-on Lab (Dual-Path Execution)
 
 แล็บในบทที่ 3 ออกแบบให้ทำงานเชื่อมต่อกับโครงสร้างแคช `HF_HOME=/cache/huggingface` (บนโฮสต์คือ `/tmp/ai-infra-hf-cache`) และพอร์ต `8000` ของ `vllm-primary-svc` ที่วางรากฐานไว้ในบทที่ 1 และ 2 โดยโค้ดทั้งหมดของแล็บนี้อยู่ในโฟลเดอร์ `labs/m3-vllm/`
@@ -364,6 +373,25 @@ C: AWQ+APC+Tune |   32 |         640.0 |         23.5 |             1450.0 |    
 Break-even Utilization vs Managed API ($0.60 / 1M tokens):
   - Config A (420 tok/s): 93.7% utilization required
   - Config C (1450 tok/s): 27.1% utilization required
+```
+
+---
+
+### Path A2: Local RTX 4050 6GB CUDA Path (\$0 — สำหรับเครื่อง HP Victus / WSL2)
+
+หากเครื่องของคุณมี GPU 6GB VRAM (เช่น NVIDIA RTX 4050 Ada Lovelace บน WSL2) คุณสามารถรัน `vLLM` V1 บน CUDA จริงได้โดยไม่ต้องรอเช่าคลาวด์ เพื่อฝึกจับอาการ BF16 เทียบกับ AWQ + FP8 KV-Cache และรัน Eval Gate ภาษาไทย:
+
+```bash
+# 1. Baseline Local CUDA (Qwen2.5-1.5B BF16, No APC)
+bash labs/m3-vllm/start_vllm_baseline.sh --local-rtx4050 --dry-run
+
+# 2. Optimized Local CUDA (Qwen2.5-3B-Instruct-AWQ + FP8 KV-Cache + APC + Eager)
+bash labs/m3-vllm/start_vllm_optimized.sh --local-rtx4050 --dry-run
+# (ตัด --dry-run ออกเพื่อสตาร์ทจริงบน Docker GPU)
+
+# 3. รัน Quantization Quality Eval Gate ภาษาไทย & JSON
+python3 labs/m3-vllm/eval_thai_quality.py --simulate
+# หรือยิงเข้าเครื่องจริง: python3 labs/m3-vllm/eval_thai_quality.py --live --url http://localhost:8000 --model Qwen/Qwen2.5-3B-Instruct-AWQ
 ```
 
 ---
@@ -607,6 +635,17 @@ vllmArgs:
 
 ---
 
+### คำถามข้อที่ 6 (2026 Extension): Disaggregated Prefill–Decode (PD) และการตรวจ Eval Gate หลัง Quantization
+> **"หากบริษัทเริ่มให้บริการ Long-Context RAG (Prompt ยาว 32k tokens) จนทำให้ ITL ของแชตบอตกระตุกแม้ตั้ง `--max-num-batched-tokens` แล้ว และลูกค้าบ่นว่าโมเดล AWQ ตอบภาษาไทยเพี้ยนบางกรณี คุณจะออกแบบสถาปัตยกรรมและกระบวนการตรวจสอบอย่างไร?"**
+
+#### เฉลยแนวทางการตอบระดับ Strong Mid-Level (Model Answer)
+- **แก้ปัญหา Prefill Interference ด้วย Disaggregated Prefill–Decode (PD):**
+  - แยก Cluster Pool ออกเป็น **Prefill Pool** (จูนเพื่อ Compute-bound Throughput และรัน Prompt ยาว) และ **Decode Pool** (จูนเพื่อ Memory-Bandwidth-bound ITL `< 25 ms` โดยไม่ถูกงาน Prefill ใหม่แทรกคิว) แล้วส่งต่อ KV-Cache ระหว่างสอง Pool ผ่าน RDMA/NIXL หรือ Shared KV Store (เช่น `llm-d` + LMCache)
+- **แก้ปัญหาคุณภาพหลังบีบอัดด้วย Quantization Eval Gate:**
+  - ปฏิบัติตามหลักใน *AI Engineering* (Chip Huyen): ห้ามดูแค่ TTFT/TPS แต่ต้องมี Automated Eval Gate วัด JSON Schema Validity และความถูกต้องภาษาไทยก่อน Promote Model Artifact และหาก INT4-AWQ สูญเสียความแม่นยำเกินเกณฑ์ (เช่น > 2%) บนการ์ด Ada/Hopper ให้สลับไปใช้ **Native FP8 (`--quantization fp8 --kv-cache-dtype fp8`)** แทน
+
+---
+
 ## 9. ตรวจสอบความสำเร็จของบทที่ 3 (Verification Command)
 
 ก่อนเข้าสู่บทที่ 4 ให้รันสคริปต์ตรวจสอบความสมบูรณ์ของบทที่ 3 ด้วยคำสั่งต่อไปนี้:
@@ -616,8 +655,9 @@ bash labs/m3-vllm/verify_m3.sh
 ```
 
 ### 9.1 รายการไฟล์ส่งมอบใน [`labs/m3-vllm/`](../labs/m3-vllm/) (Deliverables)
-- `start_vllm_baseline.sh` — สคริปต์รัน `vLLM` V1 โหมด Baseline (ปิด APC: `--no-enable-prefix-caching`; รองรับ `--local-cpu` ที่ตั้ง `HF_HOME=/tmp/ai-infra-hf-cache` และ `--cloud-gpu` ที่ตั้ง `HF_HOME=/cache/huggingface`)
-- `start_vllm_optimized.sh` — สคริปต์รัน `vLLM` V1 โหมด Optimized (`awq_marlin`, `--enable-prefix-caching`, `--max-num-batched-tokens 2048`)
+- `start_vllm_baseline.sh` — สคริปต์รัน `vLLM` V1 โหมด Baseline (ปิด APC: `--no-enable-prefix-caching`; รองรับ `--local-cpu`, `--local-rtx4050` และ `--cloud-gpu`)
+- `start_vllm_optimized.sh` — สคริปต์รัน `vLLM` V1 โหมด Optimized (รองรับ `--local-cpu`, `--local-rtx4050`, `--cloud-gpu` AWQ, และ `--cloud-gpu-fp8` FP8 W+KV)
+- `eval_thai_quality.py` — Mini-Lab Quantization Quality Eval Gate สำหรับตรวจภาษาไทยและ Structured JSON (`--simulate` / `--live`)
 - `run_benchmark_suite.sh` — ชุดทดสอบ Benchmark (TTFT p95, ITL p95, TPS, KV-Cache %, Prefix Hit %, และ Unit Economics ต่อ 1M Tokens รองรับ `--backend`)
 - `optimization-report-template.md` — แบบฟอร์มรายงานผลการปรับจูนสำหรับให้ผู้เรียนกรอกผลจริง (พร้อมตัวอย่างเฉลยที่ `examples/optimization-report-sample.md`)
 - `verify_m3.sh` — สคริปต์ตรวจสอบความถูกต้องอัตโนมัติของ Module 3 (`--target examples|workspace`)
@@ -637,3 +677,4 @@ bash labs/m3-vllm/verify_m3.sh
 3. **[แหล่งเสริม]** **Anyscale / vLLM Blog — Prefix Caching & Chunked Prefill Tuning**  
    - URL: https://docs.vllm.ai/en/latest/features/automatic_prefix_caching.html  
    - ส่วนที่ควรอ่าน: *How APC Works & Metrics (`prefix_cache_hits_total`)* (ใช้เวลาอ่าน ~1 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ 2025–2026]** **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025)*, **AI Engineering** *(Chip Huyen, O'Reilly 2025 — Eval Gates & Latency/Cost)*, และ **How to Scale Your Model** *(Google DeepMind, 2025 — Roofline & Parallelism Math)*

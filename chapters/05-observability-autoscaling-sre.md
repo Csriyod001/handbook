@@ -234,6 +234,13 @@ cat labs/m5-observability-sre/keda-vllm-scaledobject.yaml
 python3 labs/m5-observability-sre/chaos/trigger_incident.py --simulate
 ```
 
+> **Live Chaos Mode (สำหรับเครื่อง RAM 32GB เช่น HP Victus หรือ Cluster จริง):**
+> เมื่อติดตั้ง Prometheus, KEDA, LiteLLM และ `vllm-primary` บนคลัสเตอร์ `kind` เรียบร้อยแล้ว ให้เปิด `kubectl port-forward` พอร์ต `8000` และ `4000` แล้วรันโหมด `--live` เพื่อฉีด Chaos และยิง HTTP โหลดจริงให้ KEDA สเกล Pod 1 → 3:
+> ```bash
+> python3 labs/m5-observability-sre/chaos/trigger_incident.py --live --dry-run
+> # ตัด --dry-run ออกเมื่อเปิด port-forward แล้ว และล้างค่า Chaos หลังจบด้วย --live --reset
+> ```
+
 **ผลลัพธ์ที่คาดหวัง (Expected Output):**
 ```text
 ================================================================================
@@ -526,3 +533,4 @@ VERIFY_MODE=cluster bash labs/m5-observability-sre/verify_m5.sh
 3. **[แหล่งเสริม]** **OpenTelemetry Semantic Conventions for Generative AI**  
    - URL: https://opentelemetry.io/docs/specs/semconv/gen-ai/  
    - ส่วนที่ควรอ่าน: *GenAI Spans & Metrics Attributes* (ใช้เวลาอ่าน ~1 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **The Site Reliability Workbook** *(Google, Free Online — Chapter 5 Alerting on SLOs & Postmortem Culture)* และ **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025 — DCGM & Kernel Profiling)*

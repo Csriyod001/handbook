@@ -13,7 +13,7 @@
 # ------------------------------------------------------------------------------
 # Stage 1: Builder (Installs dependencies and compiles Python bytecode)
 # ------------------------------------------------------------------------------
-FROM ghcr.io/astral-sh/uv:0.5-python3.12-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:0.7-python3.12-bookworm-slim AS builder
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -24,10 +24,10 @@ WORKDIR /build
 # Copy dependency specification FIRST to maximize Docker layer cache hits
 COPY pyproject.toml ./
 
-# Create isolated virtual environment at /opt/venv and install production deps
+# Create isolated virtual environment at /opt/venv and install production deps from pyproject.toml
 RUN uv venv /opt/venv && \
     . /opt/venv/bin/activate && \
-    uv pip install --no-cache fastapi "uvicorn[standard]" pydantic
+    uv pip install --no-cache -r pyproject.toml
 
 # ------------------------------------------------------------------------------
 # Stage 2: Production Runtime (Minimal, Hardened, Non-Root)

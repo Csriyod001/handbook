@@ -4,7 +4,7 @@
 # Checks:
 #   1. Chapter 4 textbook completeness & all 8 mandatory sections
 #   2. Canonical service names/ports (litellm-gateway-svc:4000, redis-svc:6379, postgres-svc:5432, vllm-primary-svc:8000, vllm-secondary-svc:8000)
-#   3. Gateway API Inference Extension CRDs (InferencePool & InferenceModel) in k8s/gateway-stack.yaml
+#   3. Gateway API Inference Extension CRDs (InferencePool v1 & llm-d InferenceObjective) in k8s/inference-extension-v1.yaml
 #   4. ADR-003 completeness
 #   5. Execution of pytest on labs/m4-gateway/tests/test_gateway_resilience.py
 # ==============================================================================
@@ -23,6 +23,8 @@ fi
 CHAPTER_FILE="${REPO_ROOT}/chapters/04-ai-gateway-governance.md"
 LITELLM_CFG="${SCRIPT_DIR}/litellm_config.yaml"
 K8S_MANIFEST="${SCRIPT_DIR}/k8s/gateway-stack.yaml"
+K8S_INF_EXT="${SCRIPT_DIR}/k8s/inference-extension-v1.yaml"
+K8S_NETPOL="${SCRIPT_DIR}/k8s/network-policies.yaml"
 K8S_ROUTE_MANIFEST="${SCRIPT_DIR}/k8s/gateway-api-route.yaml"
 ENV_EXAMPLE="${SCRIPT_DIR}/.env.example"
 ADR_FILE="${SCRIPT_DIR}/docs/adr-003-ai-gateway-and-inference-routing.md"
@@ -53,10 +55,10 @@ for section in \
 done
 echo "[PASS] Chapter 4 contains all 8 mandatory sections."
 
-# 2. Verify key concepts and all 9 vLLM V1 metrics in Chapter 4 (EPP, InferencePool, InferenceModel, PDPA, ADR-003)
+# 2. Verify key concepts and all 9 vLLM V1 metrics in Chapter 4 (EPP, InferencePool, InferenceObjective, PDPA, ADR-003)
 for concept in \
   "InferencePool" \
-  "InferenceModel" \
+  "InferenceObjective" \
   "Endpoint Picker" \
   "<THAI_ID_REDACTED>" \
   "vllm:kv_cache_usage_perc" \
@@ -83,6 +85,8 @@ for req_file in \
   "${SCRIPT_DIR}/mock_vllm_server/app.py" \
   "${SCRIPT_DIR}/mock_vllm_server/pdpa_guardrail.py" \
   "${SCRIPT_DIR}/mock_vllm_server/Dockerfile" \
+  "${K8S_INF_EXT}" \
+  "${K8S_NETPOL}" \
   "${K8S_ROUTE_MANIFEST}" \
   "${ENV_EXAMPLE}"; do
   if [[ ! -f "${req_file}" ]]; then
@@ -102,8 +106,9 @@ grep -q "postgres-svc" "${K8S_MANIFEST}"
 grep -q "os.environ/DATABASE_URL" "${LITELLM_CFG}"
 grep -q "os.environ/LITELLM_MASTER_KEY" "${LITELLM_CFG}"
 grep -q "litellm-gateway-svc" "${K8S_MANIFEST}"
-grep -q "kind: InferencePool" "${K8S_MANIFEST}"
-grep -q "kind: InferenceModel" "${K8S_MANIFEST}"
+grep -q "kind: InferencePool" "${K8S_INF_EXT}"
+grep -q "kind: InferenceObjective" "${K8S_INF_EXT}"
+grep -q "kind: NetworkPolicy" "${K8S_NETPOL}"
 
 python3 - <<PYEOF
 import ast
@@ -128,7 +133,23 @@ with open("${SCRIPT_DIR}/mock_vllm_server/pdpa_guardrail.py", "r", encoding="utf
 
 with open("${K8S_MANIFEST}", "r", encoding="utf-8") as f:
     docs = [d for d in yaml.safe_load_all(f) if d is not None]
-assert len(docs) == 22, f"Expected 22 K8s documents in gateway-stack.yaml, got {len(docs)}"
+assert len(docs) == 14, f"Expected 14 Core K8s documents in gateway-stack.yaml, got {len(docs)}"
+
+with open("${K8S_INF_EXT}", "r", encoding="utf-8") as f:
+    ext_docs = [d for d in yaml.safe_load_all(f) if d is not None]
+assert len(ext_docs) == 8, f"Expected 8 GAIE v1/llm-d documents in inference-extension-v1.yaml, got {len(ext_docs)}"
+pool_doc = next(d for d in ext_docs if d.get("kind") == "InferencePool")
+assert pool_doc["apiVersion"] == "inference.networking.k8s.io/v1"
+obj_docs = [d for d in ext_docs if d.get("kind") == "InferenceObjective"]
+assert len(obj_docs) == 2 and all(d["apiVersion"] == "llm-d.ai/v1" for d in obj_docs)
+assert all("poolRefs" in d["spec"] and "criticality" not in d["spec"] and "modelName" not in d["spec"] for d in obj_docs)
+rt_obj = next(d for d in obj_docs if "realtime" in d["metadata"]["name"])
+bt_obj = next(d for d in obj_docs if "batch" in d["metadata"]["name"])
+assert rt_obj["spec"]["priority"] > 0 and bt_obj["spec"]["priority"] < 0
+
+with open("${K8S_NETPOL}", "r", encoding="utf-8") as f:
+    np_docs = [d for d in yaml.safe_load_all(f) if d is not None]
+assert len(np_docs) == 2 and all(d.get("kind") == "NetworkPolicy" for d in np_docs)
 
 with open("${K8S_ROUTE_MANIFEST}", "r", encoding="utf-8") as f:
     route_docs = [d for d in yaml.safe_load_all(f) if d is not None]
@@ -136,6 +157,8 @@ route_kinds = {d.get("kind") for d in route_docs}
 assert {"Gateway", "HTTPRoute", "ServiceMonitor"}.issubset(route_kinds), (
     f"gateway-api-route.yaml missing expected kinds: {route_kinds}"
 )
+sm_doc = next(d for d in route_docs if d.get("kind") == "ServiceMonitor")
+assert sm_doc["metadata"]["labels"]["release"] == "monitoring", "ServiceMonitor release label must be 'monitoring'"
 
 cm = next(d for d in docs if d.get("kind") == "ConfigMap" and d["metadata"]["name"] == "litellm-config")
 assert yaml.safe_load(cm["data"]["litellm_config.yaml"]) == lcfg, "ConfigMap litellm_config.yaml drifted from M4 litellm_config.yaml"
@@ -145,9 +168,9 @@ ast.parse(cm["data"]["pdpa_guardrail.py"], filename="configmap:pdpa_guardrail.py
 assert not any(d.get("kind") == "Secret" for d in docs), "Hardcoded Secret must not remain in gateway-stack.yaml"
 assert any(d.get("kind") == "PersistentVolumeClaim" and d["metadata"]["name"] == "postgres-data-pvc" for d in docs)
 assert any(d.get("kind") == "Job" and d["metadata"]["name"] == "litellm-init-virtual-keys" for d in docs)
-assert any(d.get("kind") == "ServiceAccount" and d["metadata"]["name"] == "vllm-qwen-epp-sa" for d in docs)
-assert any(d.get("kind") == "Role" and d["metadata"]["name"] == "vllm-qwen-epp-role" for d in docs)
-assert any(d.get("kind") == "RoleBinding" and d["metadata"]["name"] == "vllm-qwen-epp-binding" for d in docs)
+assert any(d.get("kind") == "ServiceAccount" and d["metadata"]["name"] == "vllm-qwen-epp-sa" for d in ext_docs)
+assert any(d.get("kind") == "Role" and d["metadata"]["name"] == "vllm-qwen-epp-role" for d in ext_docs)
+assert any(d.get("kind") == "RoleBinding" and d["metadata"]["name"] == "vllm-qwen-epp-binding" for d in ext_docs)
 
 for dep_name in ["vllm-primary", "vllm-secondary"]:
     dep = next(d for d in docs if d.get("kind") == "Deployment" and d["metadata"]["name"] == dep_name)
@@ -163,18 +186,18 @@ for dep_name in ["vllm-primary", "vllm-secondary"]:
 vsec = next(d for d in docs if d.get("kind") == "Deployment" and d["metadata"]["name"] == "vllm-secondary")
 assert vsec["spec"]["template"]["metadata"]["labels"]["inference-pool"] == "vllm-qwen-pool-secondary"
 
-epp = next(d for d in docs if d.get("kind") == "Deployment" and d["metadata"]["name"] == "vllm-qwen-epp")
+epp = next(d for d in ext_docs if d.get("kind") == "Deployment" and d["metadata"]["name"] == "vllm-qwen-epp")
 assert epp["spec"]["template"]["spec"]["serviceAccountName"] == "vllm-qwen-epp-sa"
 PYEOF
-echo "[PASS] litellm_config.yaml, mock-vllm-server:1.0.0, ConfigMap/AST parity, k8s/gateway-stack.yaml (22 docs), and gateway-api-route.yaml verified."
+echo "[PASS] litellm_config.yaml, mock-vllm-server:1.0.0, ConfigMap/AST parity, core gateway-stack.yaml (14 docs), GAIE v1 inference-extension-v1.yaml (8 docs), NetworkPolicies (2 docs), and gateway-api-route.yaml verified."
 
-if command -v docker >/dev/null 2>&1; then
-  echo "[PASS] docker binary detected (ready for mock-vllm-server:1.0.0 image build)."
+if command -v docker >/dev/null 2>&1 && docker --version >/dev/null 2>&1; then
+  echo "[PASS] docker binary detected ($(docker --version | head -n 1))."
 elif [[ "${VERIFY_MODE}" == "cluster" ]]; then
   echo "[FAIL] docker binary is required when VERIFY_MODE=cluster." >&2
   exit 1
 else
-  echo "[SKIP] docker not installed; skipping container build verification in VERIFY_MODE=static."
+  echo "[SKIP] docker daemon/CLI not active; skipping container build verification in VERIFY_MODE=static."
 fi
 
 if command -v kubectl >/dev/null 2>&1; then

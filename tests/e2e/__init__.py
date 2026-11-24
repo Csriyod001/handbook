@@ -83,13 +83,16 @@ def extract_relative_markdown_links(content: str) -> list[str]:
 def parse_portal_deliverable_links(html_content: str) -> list[str]:
     """Extract all deliverable and chapter file paths referenced in the HTML portal."""
     paths: set[str] = set()
-    # Chapters and labs files referenced in JS objects
-    paths.update(re.findall(r"[\'\"](chapters/[^\'\"]+)[\'\"]", html_content))
-    paths.update(re.findall(r"[\'\"](labs/[^\'\"]+)[\'\"]", html_content))
-    # Footer and manuscript links
+    # Chapters and labs files referenced in JS objects (ignore template expressions/annotations)
+    for prefix in ("chapters", "labs"):
+        for raw in re.findall(rf"[\'\"]({prefix}/[^\'\"]+)[\'\"]", html_content):
+            cleaned = raw.rstrip("\\").strip()
+            if " " not in cleaned and "${" not in cleaned:
+                paths.add(cleaned)
+    # Footer and manuscript links (ignore JS template literals containing ${...})
     for m in re.finditer(r'<a\s+[^>]*href=[\'\"]([^\'\"]+)[\'\"]', html_content):
         href = m.group(1).split("#")[0].strip()
-        if href and not href.startswith(("http://", "https://", "mailto:", "javascript:")):
+        if href and "${" not in href and not href.startswith(("http://", "https://", "mailto:", "javascript:")):
             paths.add(href)
     return sorted(paths)
 

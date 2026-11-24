@@ -2,7 +2,7 @@
 
 > **เวลาที่ใช้:** ~2 ชั่วโมง (ทำครั้งเดียวก่อนเริ่มสัปดาห์ที่ 1)  
 > **ค่าใช้จ่าย:** \$0.00 (รันบนเครื่องคอมพิวเตอร์ส่วนตัว 100%)  
-> **เป้าหมายของบทนี้:** ตั้งค่าเครื่องคอมพิวเตอร์ส่วนตัว (Linux, Windows WSL2 หรือ macOS ที่มี RAM 16GB) ให้พร้อมรันชุดแล็บ Kubernetes, OpenTofu, vLLM และระบบ Observability ตลอดทั้ง 12 สัปดาห์โดยไม่เกิดอาการเครื่องค้าง (Out-of-Memory) และวางมาตรการควบคุมงบ Cloud GPU ไม่ให้เกิน \$10 ตลอดหลักสูตร
+> **เป้าหมายของบทนี้:** ตั้งค่าเครื่องคอมพิวเตอร์ส่วนตัว (Linux, Windows WSL2 RAM 16GB หรือ **HP Victus 32GB + RTX 4050 6GB**, macOS, หรือ **Containerized Lab** ใน [`PORTABILITY_AND_QUICKSTART.md`](../PORTABILITY_AND_QUICKSTART.md)) ให้พร้อมรันชุดแล็บ Kubernetes, OpenTofu, vLLM และระบบ Observability ตลอดทั้ง 12 สัปดาห์โดยไม่เกิดอาการเครื่องค้าง (Out-of-Memory) และวางมาตรการควบคุมงบ Cloud GPU (Prepaid < \$10 หรือ AWS Spot \$10–\$30) อย่างปลอดภัย
 
 ---
 
@@ -85,17 +85,29 @@ $$\text{Total Local RAM Usage} = \underbrace{3.5\text{ GB}}_{\text{OS / WSL2}} +
 
 ## 3. ขั้นตอนการติดตั้งเครื่องมือประจำเครื่อง (Step-by-Step Tooling Setup)
 
-รองรับระบบปฏิบัติการ **Ubuntu / Debian Linux**, **Windows 11 ที่เปิดใช้งาน WSL2 (Ubuntu 22.04/24.04)**, หรือ **macOS (Apple Silicon / Intel)**
+รองรับระบบปฏิบัติการ **Ubuntu / Debian Linux**, **Windows 11 ที่เปิดใช้งาน WSL2 (Ubuntu 22.04/24.04)**, **macOS (Apple Silicon / Intel)** หรือรันผ่าน **Docker Compose / VS Code DevContainer** (ดูรายละเอียดใน [`PORTABILITY_AND_QUICKSTART.md`](../PORTABILITY_AND_QUICKSTART.md))
 
-> **คำแนะนำสำหรับผู้ใช้ Windows WSL2:**  
-> ให้สร้างหรือแก้ไขไฟล์ `%UserProfile%\.wslconfig` บนฝั่ง Windows เพื่ออนุญาตให้ WSL2 ใช้ RAM ได้อย่างน้อย 12GB และกำหนด Swap สำรองดังนี้:
+> **คำแนะนำสำหรับผู้ใช้ Windows WSL2 (เลือกตาม RAM เครื่องจริง):**  
+> ให้สร้างหรือแก้ไขไฟล์ `%UserProfile%\.wslconfig` บนฝั่ง Windows แล้วรัน `wsl --shutdown` ใน PowerShell ก่อนเปิด Ubuntu ขึ้นมาใหม่:
+> - **กรณีเครื่อง RAM 16GB:**
 > ```ini
 > [wsl2]
 > memory=12GB
 > processors=4
 > swap=4GB
 > ```
-> จากนั้นเปิด PowerShell แล้วรัน `wsl --shutdown` ก่อนเปิด Ubuntu ขึ้นมาใหม่
+> - **กรณีเครื่อง RAM 32GB (เช่น HP Victus 16-r0357tx พร้อม RTX 4050 6GB):**
+> ```ini
+> [wsl2]
+> memory=22GB
+> processors=10
+> swap=4GB
+> ```
+> *หมายเหตุสำหรับ HP Victus / WSL2 ที่มี NVIDIA GPU:* ติดตั้ง Game Ready / Studio Driver เวอร์ชันล่าสุดบนฝั่ง Windows (ไม่ต้องลง Driver ซ้ำใน WSL2) จากนั้นติดตั้ง **NVIDIA Container Toolkit** ใน Ubuntu WSL2 เพื่อให้ `docker run --gpus all` ส่งผ่าน RTX 4050 6GB เข้าคอนเทนเนอร์ `vLLM` ได้ทันที:
+> ```bash
+> nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+> docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
+> ```
 
 ### 3.1 ติดตั้งแพ็กเกจพื้นฐานและ Docker Engine
 ตรวจสอบให้แน่ใจว่ามี `curl`, `git`, `make`, `jq` และ `docker` ที่สามารถรันได้โดยไม่ต้องพิมพ์ `sudo`:
@@ -103,7 +115,7 @@ $$\text{Total Local RAM Usage} = \underbrace{3.5\text{ GB}}_{\text{OS / WSL2}} +
 ```bash
 # สำหรับ Ubuntu / Debian / WSL2
 sudo apt-get update && sudo apt-get install -y \
-  ca-certificates curl gnupg lsb-release git make jq unzip build-essential
+  ca-certificates curl gnupg lsb-release git jq unzip build-essential make
 
 # หากยังไม่ได้ติดตั้ง Docker Engine
 if ! command -v docker &> /dev/null; then
@@ -155,22 +167,29 @@ curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/inst
 
 ---
 
-## 4. กฎความปลอดภัยในการเช่า Cloud GPU (Cloud GPU Budget & Provider Guide)
+## 4. กฎความปลอดภัยในการเช่า Cloud GPU และการใช้ AWS / GCP Credit
 
-ในหลักสูตรนี้ คุณจะใช้ Cloud GPU เฉพาะใน **บทที่ 2 (ทางเลือกเสริม 2 ชม.)**, **บทที่ 3 (4 ชม.)**, และ **บทที่ 6 (4–6 ชม.)** รวมเวลาเช่าจริงไม่เกิน 10–12 ชั่วโมง (คิดเป็นเงินเพียง **~\$7.00–\$9.50** บนการ์ด NVIDIA L4 24GB)
+ในหลักสูตรนี้ คุณจะใช้ Cloud GPU 24GB เฉพาะใน **บทที่ 2 (ทางเลือกเสริม 2 ชม.)**, **บทที่ 3 (4 ชม.)**, **บทที่ 5 (2 ชม.)**, และ **บทที่ 6 (4 ชม.)** รวมเวลาเช่าจริงประมาณ 10–12 ชั่วโมง (คิดเป็นเงินเพียง **~\$7.00–\$9.50** บน RunPod/Vast.ai หรือ **~\$6–\$12** ด้วย **AWS `g6.xlarge` Spot** ภายใต้งบ \$10–\$30)
 
-### 4.1 ข้อแตกต่างสำคัญระหว่างผู้ให้บริการ GPU แบบ Container vs แบบ Full VM
+### 4.1 ข้อควรรู้ก่อนใช้ AWS / GCP Free Credit กับ GPU Quota
+| ช่องทาง Cloud | สถานะ GPU Quota เริ่มต้น | เหมาะกับงานแบบไหนใน Handbook นี้? |
+| :--- | :--- | :--- |
+| **Prepaid GPU Cloud (`RunPod`, `Vast.ai`)** | พร้อมใช้ทันทีหลังเติม \$10 | **คล่องตัวที่สุดสำหรับบทที่ 3 & 6:** ไม่ต้องขอ Quota, ตัดเงินเฉพาะเครดิตที่เติม |
+| **AWS Paid Plan + Spot `g6.xlarge` (\$10–\$30)** *(ดูคู่มือใน [`labs/optional-cloud-aws/README.md`](../labs/optional-cloud-aws/README.md))* | Default = `0 vCPU` *(ต้องยื่นขอ `All G and VT Spot Instance Requests = 4` ใน `us-east-1` ล่วงหน้า)* | **แนะนำถ้าต้องการฝึก AWS จริง:** ได้ทั้ง `1x NVIDIA L4 (24GB)`, ฟรี `250GB NVMe`, S3 Model Cache, ECR และตั้ง Auto-Terminate `shutdown -h +180` |
+| **GCP \$300 Free Trial** | **ถูกบล็อก (`0`, ปรับไม่ได้)** จนกว่าจะ Upgrade เป็น Paid Account และสร้าง Usage History | ไม่แนะนำให้พึ่งสำหรับ GPU Lab ในช่วงสัปดาห์แรกเพราะมักติด Ticket ขอ Quota หลายวัน |
+
+### 4.2 ข้อแตกต่างสำคัญระหว่างผู้ให้บริการ GPU แบบ Container vs แบบ Full VM
 วิศวกร AI Infrastructure ต้องแยกแยะรูปแบบของ Cloud GPU ให้ถูกต้องตามลักษณะงาน:
 
 | รูปแบบบริการ Cloud GPU | ตัวอย่างผู้ให้บริการ | ข้อจำกัดทางสถาปัตยกรรม | ใช้ในบทเรียนไหนของคู่มือนี้? |
 | :--- | :--- | :--- | :--- |
 | **1. GPU Container-as-a-Service (Rootless/Unprivileged Pod)** | **RunPod Pods**, **Modal Labs**, **Vast.ai (Container Mode)** | คุณได้รับมอบหมายเป็น Docker Container ที่ต่อการ์ดจอมาให้แล้ว **ไม่มี Linux Kernel / `systemd` เป็นของตัวเอง** จึงไม่สามารถติดตั้ง `k3s` หรือ NVIDIA GPU Operator ซ้อนข้างในได้ | **เหมาะที่สุดสำหรับบทที่ 3 และบทที่ 6:** ใช้รัน `vLLM` V1 บนการ์ด NVIDIA L4 (24GB) เพื่อวัดผล Benchmark จริงได้ทันทีในราคาประหยัด (~\$0.60/ชม.) |
-| **2. Full GPU Virtual Machine (IaaS VM พร้อม Kernel เต็มรูปแบบ)** | **GCP Spot VM (`g2-standard-8` L4)**, **AWS EC2 (`g6.xlarge` L4)**, **Vast.ai (VM Mode)** | ได้เครื่องเสมือนที่มี Kernel และสิทธิ์ `root` เต็มรูปแบบ สามารถติดตั้ง `k3s`/`kubeadm`, NVIDIA Container Toolkit และ NVIDIA Device Plugin ได้ | **ใช้เฉพาะทางเลือกเสริมในบทที่ 2:** เมื่อต้องการทดสอบติดตั้ง `k3s` + NVIDIA Time-Slicing ConfigMap บนเครื่องจริง |
+| **2. Full GPU Virtual Machine (IaaS VM พร้อม Kernel เต็มรูปแบบ)** | **AWS EC2 `g6.xlarge` Spot (L4)**, **GCP Spot VM (`g2-standard-8` L4)**, **Vast.ai (VM Mode)** | ได้เครื่องเสมือนที่มี Kernel และสิทธิ์ `root` เต็มรูปแบบ สามารถติดตั้ง `k3s`/`kubeadm`, NVIDIA Container Toolkit และ NVIDIA Device Plugin ได้ | **ใช้ได้ครบทั้งบทที่ 2, 3, 5 และ 6:** โดยเฉพาะ AWS `g6.xlarge` Spot ที่มีสคริปต์ OpenTofu + Dead-Man's Switch ใน `labs/optional-cloud-aws/` |
 
-### 4.2 กฎเหล็ก 3 ข้อก่อนกดสร้าง Cloud GPU ทุกครั้ง (Zero-Surprise Billing Protocol)
-1. **ใช้การเติมเงินแบบ Prepaid Credit เสมอ:** เลือกผู้ให้บริการที่ตัดเงินจากเครดิตที่เติมไว้ล่วงหน้า (เช่น เติมไว้ \$10 บน RunPod หรือ Vast.ai) เพื่อป้องกันไม่ให้เกิดบิลค้างชำระเกินงบแม้ในกรณีที่ลืมปิดเครื่อง
-2. **ตั้งเวลาปิดเครื่องอัตโนมัติ (Auto-Shutdown Timer):** ทุกครั้งที่เริ่มเซสชันบน Cloud GPU ให้รันคำสั่งตั้งเวลาปิดตัวเองล่วงหน้า เช่น ตั้งให้ปิดเครื่องภายใน 3 ชั่วโมงเพื่อกันลืม
-3. **ทำลายทรัพยากรด้วย `tofu destroy` ทันทีที่เก็บผลเสร็จ:** ดาวน์โหลดไฟล์ผลลัพธ์ JSON/Markdown กลับมาที่โฟลเดอร์ `labs/` บนเครื่องส่วนตัว แล้วสั่งทำลายอินสแตนซ์พร้อมตรวจสอบในหน้า Billing Dashboard ว่าไม่มีทั้ง GPU Pod และ Network Volume ค้างอยู่
+### 4.3 กฎเหล็ก 3 ข้อก่อนกดสร้าง Cloud GPU ทุกครั้ง (Zero-Surprise Billing Protocol)
+1. **ตั้งเพดานงบ / ใช้ Prepaid Credit เสมอ:** บน RunPod/Vast.ai ให้เติมไว้ \$10; ส่วนบน AWS ให้ตั้ง **AWS Budgets Alert ที่ \$5, \$15, \$25** ก่อนเปิด `g6.xlarge`
+2. **ตั้งเวลาปิดเครื่องอัตโนมัติ (Dead-Man's Switch):** ทุกครั้งที่เริ่มเซสชันบน Cloud GPU ให้ตั้ง `instance_initiated_shutdown_behavior = "terminate"` คู่กับ `sudo shutdown -h +180` เพื่อกันลืม
+3. **ทำลายทรัพยากรด้วย `tofu destroy` ทันทีที่เก็บผลเสร็จ:** ดาวน์โหลดไฟล์ผลลัพธ์ JSON/Markdown กลับมาที่โฟลเดอร์ `labs/` บนเครื่องส่วนตัว แล้วสั่งทำลายอินสแตนซ์พร้อมตรวจสอบหน้า Billing ว่าไม่มี EC2, EBS หรือ EIP ค้างอยู่
 
 ---
 
@@ -178,7 +197,7 @@ curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/inst
 
 เราได้เตรียมไฟล์ `Makefile` ไว้ที่รากของโปรเจกต์เพื่อทำหน้าที่ตรวจสอบความพร้อมของฮาร์ดแวร์ (CPU, RAM, พื้นที่ว่างในดิสก์), โฟลเดอร์แคชสำหรับโมเดล (`/tmp/ai-infra-hf-cache`), และเครื่องมือที่จำเป็นทั้งหมด
 
-ให้รันคำสั่งต่อไปนี้จากโฟลเดอร์รากของโปรเจกต์ (`ai-infra-handbook/`):
+ให้รันคำสั่งต่อไปนี้จากโฟลเดอร์รากของโปรเจกต์ (`ai-infra-handbook/`) หากยังไม่ได้ติดตั้ง GNU `make` สามารถใช้ `python3 scripts/make` แทนได้ทันที:
 
 ```bash
 # จากโฟลเดอร์ ai-infra-handbook/
@@ -187,6 +206,9 @@ make init-cache
 
 # 2. รันสคริปต์ตรวจสอบความพร้อมของเครื่องและเครื่องมือ
 make check-env
+
+# (หรือใช้ตัวรันพกพาบนเครื่องที่ยังไม่มี GNU make)
+python3 scripts/make verify-static
 ```
 
 ### 5.1 เกณฑ์ผ่านของบทที่ 0 (Pass Criteria ก่อนเริ่มบทที่ 1)

@@ -1,6 +1,6 @@
 # บทที่ 4: สถาปัตยกรรม AI Gateway, การจัดเส้นทางอัจฉริยะ และการกำกับดูแลระบบหลายผู้เช่า (AI Gateway, Intelligent Routing & Multi-Tenant Governance)
 
-> **Milestone M4 (สัปดาห์ที่ 7–8):** สร้างชั้นควบคุมกลาง (**Centralized AI Gateway Control Plane**) ด้วย **`LiteLLM Proxy`** และ **Kubernetes Gateway API Inference Extension (`InferencePool`, `InferenceModel`, Endpoint Picker - EPP)** เพื่อบังคับใช้โควตา RPM/TPM รายทีม (Virtual Keys), แคชคำตอบด้วย Redis, คัดกรองข้อมูลส่วนบุคคลตามกฎหมาย PDPA (เลขบัตรประชาชนไทย 13 หลักและเบอร์โทรศัพท์) ตามมาตรฐาน OWASP LLM Top 10 (2025), และสลับเส้นทางอัตโนมัติ (Automated Failover) เมื่อเอ็นจินหลักเกิดความหน่วงสูงหรือล่ม
+> **Milestone M4 (สัปดาห์ที่ 7–8):** สร้างชั้นควบคุมกลาง (**Centralized AI Gateway Control Plane**) ด้วย **`LiteLLM Proxy`** และ **Kubernetes Gateway API Inference Extension (`InferencePool` v1, `llm-d` `InferenceObjective`, Endpoint Picker - EPP)** เพื่อบังคับใช้โควตา RPM/TPM รายทีม (Virtual Keys), แคชคำตอบด้วย Redis, คัดกรองข้อมูลส่วนบุคคลตามกฎหมาย PDPA (เลขบัตรประชาชนไทย 13 หลักและเบอร์โทรศัพท์) ตามมาตรฐาน OWASP LLM Top 10 (2025), และสลับเส้นทางอัตโนมัติ (Automated Failover) เมื่อเอ็นจินหลักเกิดความหน่วงสูงหรือล่ม
 
 ---
 
@@ -31,7 +31,7 @@
 
 เมื่อจบบทเรียนนี้ คุณจะสามารถ:
 - ออกแบบและติดตั้ง **`LiteLLM Proxy`** ร่วมกับ **PostgreSQL** (เก็บ Virtual Keys และงบประมาณรายทีม) และ **Redis** (เก็บ Distributed Rate Limit Counters และ Exact/Semantic Cache) บน Kubernetes
-- อธิบายสถาปัตยกรรมและกลไกการให้คะแนนของ **Kubernetes Gateway API Inference Extension** (`InferencePool`, `InferenceModel`, และ **Endpoint Picker - EPP**) ที่อ่านเมทริกซ์ `vllm:kv_cache_usage_perc` และ `vllm:num_requests_waiting` เพื่อเลือก Pod ที่เหมาะสมที่สุด
+- อธิบายสถาปัตยกรรมและกลไกการให้คะแนนของ **Kubernetes Gateway API Inference Extension** (`InferencePool` `v1`, **`llm-d` `InferenceObjective`** [เดิมคือ `InferenceModel`], และ **Endpoint Picker - EPP**) ที่อ่านเมทริกซ์ `vllm:kv_cache_usage_perc` และ `vllm:num_requests_waiting` เพื่อเลือก Pod ที่เหมาะสมที่สุด
 - เขียนและทดสอบระบบคัดกรองข้อมูลส่วนบุคคล (**PDPA PII Masking Guardrail**) ที่ตรวจสอบเลขบัตรประชาชนไทย 13 หลัก (พร้อมสมการตรวจสอบ Checksum Modulo-11) และเบอร์โทรศัพท์ไทย
 - สร้างและรัน **`mock_vllm_server`** (เซิร์ฟเวอร์จำลองการสตรีม SSE ที่ใช้ RAM น้อยกว่า `80 MB` ต่อ Pod และส่งออก Prometheus V1 metrics ครบทุกตัว) เพื่อจำลองการทำ Multi-Replica Failover และ Chaos Testing บนเครื่อง Local 16GB RAM ได้โดยไม่เกิด OOM
 - เขียนชุดทดสอบอัตโนมัติ (`tests/test_gateway_resilience.py`) เพื่อพิสูจน์การทำงานของ Rate Limit (`HTTP 429`), PII Redaction (`<THAI_ID_REDACTED>`), Cache Hit, และ Primary-to-Secondary Automated Failover ภายในเวลา `< 3.5 วินาที`
@@ -64,10 +64,10 @@ flowchart TB
         Postgres[("PostgreSQL 16 (postgres-svc:5432)\nVirtual Keys & Spend Logs")]
     end
 
-    subgraph K8sInferenceExt["Kubernetes Gateway API Inference Extension"]
-        InfModel["CRD: InferenceModel (qwen2.5-7b, Criticality: Critical)"]
-        InfPool["CRD: InferencePool (vllm-pool)"]
-        EPP["Endpoint Picker (EPP)\nScores: KV-Cache % + Waiting Queue + Prefix Affinity"]
+    subgraph K8sInferenceExt["Kubernetes Gateway API Inference Extension + llm-d"]
+        InfModel["CRD: InferenceObjective (qwen25-7b-realtime, priority: 100)"]
+        InfPool["CRD: InferencePool v1 (vllm-qwen-pool)"]
+        EPP["Endpoint Picker (EPP v1.0.0)\nScores: KV-Cache % + Waiting Queue + Prefix Affinity"]
     end
 
     subgraph ServingBackends["Model Serving Backends (vLLM V1 / mock_vllm_server)"]
@@ -90,20 +90,20 @@ flowchart TB
     Router -.->|"Automated Fallback on 5xx / Timeout > 3s"| Secondary
 ```
 
-### 2.2 กลไกการทำงานของ Kubernetes Gateway API Inference Extension (`InferenceModel`, `InferencePool`, และ `EPP`)
+### 2.2 กลไกการทำงานของ Kubernetes Gateway API Inference Extension (`InferencePool` v1, `InferenceObjective`, และ `EPP`)
 
 ทำไม Kubernetes `Service` มาตรฐานถึงไม่เพียงพอสำหรับเวิร์กโหลด LLM?
 ในเว็บแอปพลิเคชันทั่วไป คำขอ HTTP แต่ละรายการใช้เวลาประมวลผลใกล้เคียงกัน (เช่น 10–50 ms) และใช้หน่วยความจำน้อยมาก แต่ในระบบเสิร์ฟ LLM:
 - คำขอที่ 1 อาจเป็นคำถามสั้นๆ 20 โทเคน ใช้เวลา 150 ms
 - คำขอที่ 2 อาจแนบเอกสารสัญญา 4,000 โทเคนและสั่งเขียนโค้ดยาว 1,000 โทเคน ใช้เวลา 18 วินาทีและกินพื้นที่ KV-Cache บนการ์ดจอไปกว่า 280 MB
 
-โครงการมาตรฐานของชุมชน Kubernetes ชื่อ **Gateway API Inference Extension** จึงได้เพิ่ม Custom Resource Definitions (CRDs) 2 ตัว และคอมโพเนนต์การจัดเส้นทางอัจฉริยะ 1 ตัว:
+โครงการมาตรฐานของชุมชน Kubernetes ชื่อ **Gateway API Inference Extension (`v1`)** และโปรเจกต์ **`llm-d`** จึงแยกหน้าที่ผ่าน Custom Resource Definitions (CRDs) 2 ตัว และคอมโพเนนต์การจัดเส้นทางอัจฉริยะ 1 ตัว:
 
-1. **`InferenceModel` (เจ้าของแอปพลิเคชันเป็นผู้กำหนด):**
-   - แมปชื่อโมเดลที่ผู้ใช้เรียก (เช่น `qwen2.5-7b`) เข้ากับระดับความสำคัญทางธุรกิจ (**`criticality`**):
-     - `Critical` (หรือ `Sheddable: false`): สำหรับทราฟฟิก `realtime-team` ที่ต้องได้รับบริการเสมอ
-     - `Sheddable` (หรือ `Standard`): สำหรับทราฟฟิก `batch-team` ซึ่งหากคลัสเตอร์มีค่า `vllm:kv_cache_usage_perc` ทะลุเกณฑ์วิกฤต (เช่น `> 85%`) ตัว EPP จะปฏิเสธคำขอระดับ `Sheddable` ทันที (Load Shedding) เพื่อสงวนพื้นที่ KV-Cache ไว้ให้คำขอระดับ `Critical`!
-2. **`InferencePool` (ทีมแพลตฟอร์มเป็นผู้กำหนด):**
+1. **`InferenceObjective` (`llm-d.ai/v1`, พัฒนาต่อจาก `InferenceModel` `v1alpha2` เดิม):**
+   - ผูกนโยบายลำดับความสำคัญของเวิร์กโหลดเข้ากับ `poolRefs` โดยใช้ค่า **`priority`** แบบมีเครื่องหมาย (Signed Priority):
+     - **`priority: 100` (บวก = Critical):** สำหรับทราฟฟิก `realtime-team` ที่ต้องได้รับบริการเสมอ
+     - **`priority: -10` (ลบ = Sheddable):** สำหรับทราฟฟิก `batch-team` ซึ่งหากคลัสเตอร์มีค่า `vllm:kv_cache_usage_perc` ทะลุเกณฑ์วิกฤต (เช่น `> 85%`) ตัว EPP จะปฏิเสธคำขอระดับ Sheddable ทันที (Load Shedding) เพื่อสงวนพื้นที่ KV-Cache ไว้ให้คำขอระดับ Critical!
+2. **`InferencePool` (`inference.networking.k8s.io/v1` — ทีมแพลตฟอร์มเป็นผู้กำหนด):**
    - จัดกลุ่ม Pod ของ `vLLM` ที่เสิร์ฟโมเดลพื้นฐานตัวเดียวกันเข้าด้วยกัน และผูกเข้ากับบริการ **Endpoint Picker (EPP)**
 3. **Endpoint Picker (`EPP` — ExtProc Filter):**
    - ทำงานเป็น External Processing (`ext_proc`) ร่วมกับ Envoy / Gateway โดยคอยดึงค่า Prometheus metrics จากทุก Pod ใน `InferencePool` ทุกๆ 50–200 มิลลิวินาที ได้แก่:
@@ -213,8 +213,11 @@ labs/m4-gateway/
 │   └── Dockerfile                                  # Multi-stage Docker build ด้วย uv (UID 10001, HF_HOME=/cache/huggingface)
 ├── litellm_config.yaml                             # ไฟล์ตั้งค่า LiteLLM Proxy (qwen2.5-7b, qwen2.5-7b-batch, num_retries: 0, Redis Cache, PDPA)
 ├── k8s/
-│   ├── gateway-stack.yaml                          # K8s Manifests (Mock vLLM, LiteLLM+ConfigMap+InitJob, Redis, Postgres+PVC, EPP+RBAC, CRDs)
-│   └── gateway-api-route.yaml                      # Optional Overlay: Gateway + HTTPRoute (ชี้เข้า InferencePool) + ServiceMonitor
+│   ├── gateway-stack.yaml                          # Core K8s Stack 14 Docs (Mock vLLM, LiteLLM+ConfigMap+InitJob, Redis, Postgres+PVC/Probe)
+│   ├── inference-extension-v1.yaml                 # GAIE v1 & llm-d CRDs 8 Docs (EPP v1.0.0 + RBAC, InferencePool v1, InferenceObjective)
+│   ├── network-policies.yaml                       # Zero-Trust NetworkPolicies (กั้น Traffic ตรงเข้า vLLM/Redis/Postgres)
+│   ├── litellm-ha-patch.yaml                       # Optional HA Patch (LiteLLM 2 replicas + PDB สำหรับ 32GB/Prod)
+│   └── gateway-api-route.yaml                      # Optional Overlay: Gateway + HTTPRoute (inference.networking.k8s.io) + ServiceMonitor (release: monitoring)
 ├── tests/
 │   └── test_gateway_resilience.py                  # ชุดทดสอบอัตโนมัติ (Rate Limit 429, Thai ID/Phone/Multimodal Redaction, Cache Hit, Failover)
 ├── docs/
@@ -276,11 +279,9 @@ labs/m4-gateway/tests/test_gateway_resilience.py::test_tenant_rate_limiting_http
 
 #### ขั้นตอนที่ 3: ดีพลอย Gateway Stack ลงบนคลัสเตอร์ Kubernetes (`kind`)
 
-หากคลัสเตอร์ `ai-platform-local` รันอยู่ ให้ทำตามลำดับดังนี้:
-1. ติดตั้ง CRDs ของ **Gateway API Inference Extension** (`v0.3.0`) ก่อน (เพื่อให้ Apply `InferencePool` และ `InferenceModel` ผ่าน):
-   `kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v0.3.0/manifests.yaml`
-2. สร้างและโหลดอิมเมจ `mock-vllm-server:1.0.0` (รันแบบ Non-root UID `10001`, `HF_HOME=/cache/huggingface`, `readOnlyRootFilesystem: true`) โดยระบุ **Build Context เป็น `labs/m4-gateway`**
-3. สร้าง Kubernetes `Secret` `litellm-secrets` จาก `.env.example` (ไม่เก็บ Password/Master Key จริงไว้ใน Git) แล้วจึง Apply Stack ทั้งหมด (ซึ่งรวม Postgres PVC, Readines Probe, Job `litellm-init-virtual-keys` สำหรับ Seed Virtual Keys, และ `ServiceAccount`/`Role`/`RoleBinding` ของ EPP) พร้อมแนบ `k8s/gateway-api-route.yaml` หากคลัสเตอร์มี Envoy Gateway / kgateway:
+หากคลัสเตอร์ `ai-platform-local` รันอยู่ ให้ทำตามลำดับดังนี้ (แยก Core Stack ออกจาก CRD Manifests เพื่อไม่ให้พังหากยังไม่ได้ลง CRDs):
+1. สร้างและโหลดอิมเมจ `mock-vllm-server:1.0.0` (Non-root UID `10001`, `HF_HOME=/cache/huggingface`, `readOnlyRootFilesystem: true`) และสร้าง Secret `litellm-secrets` แล้ว Apply Core Stack (`k8s/gateway-stack.yaml`) + Zero-Trust `k8s/network-policies.yaml` (+ `k8s/litellm-ha-patch.yaml` สำหรับเครื่อง 32GB RAM)
+2. ติดตั้ง CRDs ของ **Gateway API Inference Extension (`v1.0.0`)** และ **`llm-d` `InferenceObjective`** แล้วจึง Apply `k8s/inference-extension-v1.yaml` (อัปเกรดจาก `InferenceModel` `v1alpha2` เดิมเป็น `InferencePool v1` + `InferenceObjective`) และ `k8s/gateway-api-route.yaml` (ใช้ `release: monitoring`)
 
 ```bash
 docker build -t mock-vllm-server:1.0.0 -f labs/m4-gateway/mock_vllm_server/Dockerfile labs/m4-gateway
@@ -291,10 +292,18 @@ cp labs/m4-gateway/.env.example labs/m4-gateway/.env
 kubectl create namespace ai-platform --dry-run=client -o yaml | kubectl apply -f -
 kubectl create secret generic litellm-secrets -n ai-platform --from-env-file=labs/m4-gateway/.env
 
+# 1. Core Stack + Zero-Trust NetworkPolicies (ไม่พึ่ง CRDs)
 kubectl apply -f labs/m4-gateway/k8s/gateway-stack.yaml
-# (ตัวเลือกเพิ่มเติมเมื่อติดตั้ง Gateway API Controller แล้ว)
+kubectl apply -f labs/m4-gateway/k8s/network-policies.yaml
+# (ทางเลือก HA สำหรับเครื่อง 32GB RAM):
+# kubectl scale deployment/litellm-gateway -n ai-platform --replicas=2
+# kubectl apply -f labs/m4-gateway/k8s/litellm-ha-patch.yaml
+
+# 2. GAIE v1 + llm-d CRDs & Endpoint Picker
+# kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.0.0/manifests.yaml
+# kubectl apply -f labs/m4-gateway/k8s/inference-extension-v1.yaml
 # kubectl apply -f labs/m4-gateway/k8s/gateway-api-route.yaml
-kubectl get pods,svc,jobs -n ai-platform
+kubectl get pods,svc,jobs,networkpolicy -n ai-platform
 ```
 
 ---
@@ -304,7 +313,7 @@ kubectl get pods,svc,jobs -n ai-platform
 เมื่อรันบนคลัสเตอร์ที่มีโหนด GPU:
 1. ให้ `vllm-primary-svc:8000` ชี้ไปยัง Deployment ของ `vLLM` จริงที่รัน `Qwen/Qwen2.5-7B-Instruct-AWQ` จากบทที่ 3
 2. ให้ `vllm-secondary-svc:8000` ชี้ไปยังเรพลิกาสำรอง (หรือใช้ `mock_vllm_server` / Managed API Endpoint เป็น Fallback ปลายทาง)
-3. ติดตั้งคอนโทรลเลอร์ของ **Gateway API Inference Extension** (`v0.3.0+`) เพื่อให้ `EndpointPicker` อ่านค่า `vllm:kv_cache_usage_perc` และ `vllm:num_requests_waiting` จริงจากพอร์ต `8000/metrics` ของแต่ละ Pod
+3. ติดตั้งคอนโทรลเลอร์ของ **Gateway API Inference Extension** (`v1.0.0`) และ **`llm-d` `InferenceObjective`** เพื่อให้ `EndpointPicker` อ่านค่า `vllm:kv_cache_usage_perc` และ `vllm:num_requests_waiting` จริงจากพอร์ต `8000/metrics` ของแต่ละ Pod
 
 ---
 
@@ -419,16 +428,16 @@ curl -X POST http://localhost:8000/admin/chaos \
 ---
 
 ### คำถามข้อที่ 1: ทำไม Round-Robin / Least-Connections ถึงล้มเหลวกับ LLM และการแก้ปัญหาด้วย Kubernetes Gateway API Inference Extension (`EPP`)
-> **"ทำไมการกระจายโหลดด้วย Kubernetes Service (Round-Robin) หรือ NGINX (Least-Connections) จึงมักทำให้ค่า p99 Latency ของคลัสเตอร์ `vLLM` พุ่งสูงผิดปกติ? และสถาปัตยกรรม Kubernetes Gateway API Inference Extension (`InferencePool`, `InferenceModel`, `Endpoint Picker`) แก้ปัญหานี้อย่างไร?"**
+> **"ทำไมการกระจายโหลดด้วย Kubernetes Service (Round-Robin) หรือ NGINX (Least-Connections) จึงมักทำให้ค่า p99 Latency ของคลัสเตอร์ `vLLM` พุ่งสูงผิดปกติ? และสถาปัตยกรรม Kubernetes Gateway API Inference Extension (`InferencePool` v1, `llm-d` `InferenceObjective`, `Endpoint Picker`) แก้ปัญหานี้อย่างไร?"**
 
 #### เฉลยแนวทางการตอบระดับ Strong Mid-Level (Model Answer)
 - **ทำไม Round-Robin และ Least-Connections ถึงล้มเหลวกับ LLM:**
   1. **ความไม่สมมาตรของต้นทุนต่อคำขอ (Request Cost Asymmetry):** คำขอ HTTP 1 รายการที่มีความยาว 100 โทเคน กับอีกคำขอที่มีความยาว 4,000 โทเคน นับเป็น "1 Active Connection" เท่ากันในมุมมองของ Least-Connections แต่ใช้พื้นที่ KV-Cache และเวลา GPU ต่างกันถึง 40 เท่า
   2. **การไม่รับรู้สถานะหน่วยความจำและแคช (KV-Cache & Prefix-Cache Blindness):** Round-Robin อาจส่งคำขอใหม่ไปยัง Pod ที่ `vllm:kv_cache_usage_perc` พุ่งถึง 98% จนเกิด Preemption Thrashing หรือส่งคำขอที่มี System Prompt ชุดเดียวกันกระจายไปคนละ Pod จนเสียโอกาสทำ Prefix Cache Hit
-- **กลไกของ Gateway API Inference Extension:**
-  - แยกนิยามระดับธุรกิจไว้ที่ **`InferenceModel`** (ระบุชื่อโมเดลและระดับความสำคัญ `Critical` vs `Sheddable`) และนิยามกลุ่มเซิร์ฟเวอร์ไว้ที่ **`InferencePool`**
+- **กลไกของ Gateway API Inference Extension (`v1`) + `llm-d`:**
+  - แยกนิยามกลุ่มเซิร์ฟเวอร์ไว้ที่ **`InferencePool` (`inference.networking.k8s.io/v1`)** และกำหนดนโยบายระดับความสำคัญไว้ที่ **`InferenceObjective` (`llm-d.ai/v1`, เดิมคือ `InferenceModel`)** ผ่านค่า `priority` แบบมีเครื่องหมาย (`+100` สำหรับ Critical vs `-10` สำหรับ Sheddable)
   - ใช้คอมโพเนนต์ **Endpoint Picker (EPP)** ซึ่งเชื่อมต่อกับ Envoy Gateway ผ่านโปรโตคอล `ext_proc` โดย EPP จะดึงเมทริกซ์จริงจาก `vLLM` ได้แก่ `vllm:kv_cache_usage_perc`, `vllm:num_requests_waiting`, และสถานะบล็อกของ Prefix Cache
-  - เมื่อมีคำขอเข้ามา EPP จะคำนวณคะแนนรวมเพื่อเลือก Pod ที่มี Prefix Cache ตรงกันมากที่สุด **และ** มีคิวรอรวมถึงการใช้ KV-Cache ต่ำที่สุด พร้อมทั้งทำ **Priority-based Load Shedding** (ปฏิเสธคำขอระดับ `Sheddable` ของงาน Batch เมื่อ KV-Cache ทั้งพูลเกินเกณฑ์วิกฤต เพื่อปกป้องทราฟฟิก `Critical`)
+  - เมื่อมีคำขอเข้ามา EPP จะคำนวณคะแนนรวมเพื่อเลือก Pod ที่มี Prefix Cache ตรงกันมากที่สุด **และ** มีคิวรอรวมถึงการใช้ KV-Cache ต่ำที่สุด พร้อมทั้งทำ **Priority-based Load Shedding** (ปฏิเสธคำขอระดับ Sheddable ของงาน Batch ที่มีค่า `priority` ติดลบเมื่อ KV-Cache ทั้งพูลเกินเกณฑ์วิกฤต เพื่อปกป้องทราฟฟิก Critical)
 
 ---
 
@@ -489,7 +498,7 @@ VERIFY_MODE=cluster bash labs/m4-gateway/verify_m4.sh
 - `.env.example` — เทมเพลตสร้าง `Secret litellm-secrets` นอก Git (รวม `LITELLM_MASTER_KEY`, `LITELLM_SALT_KEY`, `DATABASE_URL`)
 - `mock_vllm_server/app.py`, `mock_vllm_server/pdpa_guardrail.py`, `mock_vllm_server/Dockerfile` — Backend จำลอง `mock-vllm-server:1.0.0` + โมดูล PDPA Single Source of Truth
 - `litellm_config.yaml` — คอนฟิก `LiteLLM Proxy` พร้อม Virtual Keys, `qwen2.5-7b-batch`, `num_retries: 0`, Redis Cache, PDPA Callback (`pdpa_guardrail.proxy_handler_instance`), `require_auth_for_metrics_endpoint: false`, และ Fallback Routing
-- `k8s/gateway-stack.yaml`, `k8s/gateway-api-route.yaml` — Manifests ครบชุด (`vllm-primary`, `vllm-secondary` แยก Pool Label, `litellm-gateway`, Init Job `litellm-init-virtual-keys`, `vllm-qwen-epp` พร้อม RBAC, `redis`, `postgres` + PVC/Probe, `ConfigMap`, `InferencePool`/`InferenceModel`, `Gateway`/`HTTPRoute`/`ServiceMonitor`)
+- `k8s/gateway-stack.yaml`, `k8s/inference-extension-v1.yaml`, `k8s/network-policies.yaml`, `k8s/litellm-ha-patch.yaml`, `k8s/gateway-api-route.yaml` — Manifests ครบชุดแยก Core Stack (14 docs), GAIE v1 + `llm-d` `InferenceObjective` (8 docs), Zero-Trust `NetworkPolicy` (2 docs), Optional Gateway HA และ `Gateway`/`HTTPRoute`/`ServiceMonitor` (`release: monitoring`)
 - `tests/test_gateway_resilience.py` — ชุดทดสอบ `pytest` ตรวจสอบความทนทานและ Metrics ครบทุกมิติ
 - `docs/adr-003-ai-gateway-and-inference-routing.md` — เอกสาร ADR-003
 - `verify_m4.sh` — สคริปต์ตรวจสอบความถูกต้องของ Module 4 และเชื่อมต่อสู่ Milestone Gate 2
@@ -498,16 +507,17 @@ VERIFY_MODE=cluster bash labs/m4-gateway/verify_m4.sh
 - [ ] `mock_vllm_server` ส่งออก Prometheus V1 metrics ครบชุด (`vllm:inter_token_latency_seconds_bucket` พร้อม Compat Alias `vllm:time_per_output_token_seconds_bucket` และ Cumulative Buckets ที่เพิ่มขึ้นแบบ Non-decreasing) และใช้ RAM `< 80 MB`
 - [ ] Pre-call PDPA Guardrail แปลงเลขบัตรประชาชนไทย 13 หลักเป็น `<THAI_ID_REDACTED>` และเบอร์มือถือ (`0xx`/`+66`) เป็น `<THAI_PHONE_REDACTED>` ก่อนเข้าสู่ Redis Cache และ Backend (รองรับ `None` และ Multimodal parts)
 - [ ] คีย์ `batch-team` (`10 RPM`) ถูกสกัดด้วย `HTTP 429` เมื่อยิงเกินโควตาโดยไม่กระทบ `realtime-team`, และ Primary Latency Spike สลับเส้นทางไป `vllm-secondary-svc` สำเร็จ
-- [ ] Manifests `k8s/gateway-stack.yaml` (22 documents, ไม่มี Hardcoded Secret) และ `k8s/gateway-api-route.yaml` ผ่านการตรวจสอบ YAML Parsing และสอดคล้องกับ `litellm_config.yaml` + `pdpa_guardrail.py`
+- [ ] Manifests `k8s/gateway-stack.yaml` (14 Core docs, ไม่มี Hardcoded Secret), `k8s/inference-extension-v1.yaml` (8 GAIE v1/`llm-d` docs), `k8s/network-policies.yaml`, และ `k8s/gateway-api-route.yaml` (`release: monitoring`) ผ่านการตรวจสอบ YAML Parsing และสอดคล้องกับ `litellm_config.yaml` + `pdpa_guardrail.py`
 - [ ] รัน `VERIFY_MODE=static bash labs/m4-gateway/verify_m4.sh` (และ `VERIFY_MODE=cluster` เมื่อมีคลัสเตอร์จริง) ผ่าน 100%
 
 ### 9.3 แหล่งเรียนรู้อ้างอิงประจำบทที่ 4 (Curated Verified Resources)
 1. **[แหล่งหลัก 4.1]** **LiteLLM Proxy Official Documentation (Routing, Fallbacks, Virtual Keys & Custom Guardrails)**  
    - URL: https://docs.litellm.ai/docs/proxy/quick_start และ https://docs.litellm.ai/docs/proxy/custom_guardrails  
    - ส่วนที่ควรอ่าน: *Load Balancing & Fallback Routing*, *Pre-call Guardrail Hooks*, *Redis Caching* (ใช้เวลาอ่าน ~3 ชั่วโมง | ฟรี)
-2. **[แหล่งหลัก 4.2]** **Kubernetes Gateway API Inference Extension (`InferencePool` & `Endpoint Picker`)**  
+2. **[แหล่งหลัก 4.2]** **Kubernetes Gateway API Inference Extension (`InferencePool` v1 & `Endpoint Picker`)**  
    - URL: https://gateway-api-inference-extension.sigs.k8s.io/  
-   - ส่วนที่ควรอ่าน: *Overview*, *Architecture (EPP)*, *InferencePool & InferenceModel CRDs* (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
-3. **[แหล่งเสริม]** **OWASP Top 10 for Large Language Model Applications (2025)**  
-   - URL: https://genai.owasp.org/llm-top-10/  
-   - ส่วนที่ควรอ่าน: *LLM02:2025 Sensitive Information Disclosure* & *LLM10:2025 Unbounded Consumption* (ใช้เวลาอ่าน ~1.5 ชั่วโมง | ฟรี)
+   - ส่วนที่ควรอ่าน: *Overview*, *Architecture (EPP)*, *InferencePool v1 CRD* (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+3. **[แหล่งเสริม]** **OWASP Top 10 for Large Language Model Applications (2025) & CNCF `llm-d`**  
+   - URL: https://genai.owasp.org/llm-top-10/ และ https://llm-d.ai/  
+   - ส่วนที่ควรอ่าน: *LLM02:2025 Sensitive Information Disclosure*, *LLM10:2025 Unbounded Consumption* และ `InferenceObjective` Routing (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **Production Kubernetes** *(O'Reilly — NetworkPolicies & Ingress Security)* และ **AI Engineering** *(Chip Huyen, O'Reilly 2025 — Guardrails & Gateway Routing)*

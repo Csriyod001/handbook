@@ -5,7 +5,7 @@
 #   kind load docker-image mock-vllm-server:1.0.0 --name ai-platform-local
 # ==============================================================================
 
-FROM ghcr.io/astral-sh/uv:0.5-python3.12-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:0.7-python3.12-bookworm-slim AS builder
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \

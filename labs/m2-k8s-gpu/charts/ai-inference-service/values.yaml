@@ -22,8 +22,9 @@ service:
 
 model:
   # Local CPU / Time-Sliced GPU default: Qwen/Qwen2.5-0.5B-Instruct
-  # Switch to Qwen/Qwen2.5-7B-Instruct-AWQ in values-cloud-gpu.yaml for dedicated L4 GPU
+  # Switch to Qwen/Qwen2.5-7B-Instruct-AWQ in values-cloud-gpu-7b-awq.yaml for dedicated L4 GPU
   id: "Qwen/Qwen2.5-0.5B-Instruct"
+  revision: ""
   maxModelLen: 2048
   gpuMemoryUtilization: "0.20"
   enforceEager: true

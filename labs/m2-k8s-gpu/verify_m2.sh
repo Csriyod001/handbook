@@ -23,6 +23,7 @@ for f in \
   "charts/ai-inference-service/values.yaml" \
   "charts/ai-inference-service/values-cloud-gpu.yaml" \
   "charts/ai-inference-service/values-cloud-gpu-7b-awq.yaml" \
+  "charts/ai-inference-service/values-local-rtx4050.yaml" \
   "charts/ai-inference-service/templates/deployment.yaml" \
   "charts/ai-inference-service/templates/service.yaml" \
   "charts/ai-inference-service/templates/pvc.yaml" \
@@ -57,6 +58,7 @@ for path in [
     "charts/ai-inference-service/values.yaml",
     "charts/ai-inference-service/values-cloud-gpu.yaml",
     "charts/ai-inference-service/values-cloud-gpu-7b-awq.yaml",
+    "charts/ai-inference-service/values-local-rtx4050.yaml",
 ]:
     with open(path, "r", encoding="utf-8") as f:
         docs = list(yaml.safe_load_all(f))
@@ -74,11 +76,11 @@ assert vals["modelCache"]["mountPath"] == "/cache/huggingface"
 
 with open("charts/ai-inference-service/values-cloud-gpu.yaml", "r", encoding="utf-8") as f:
     cvals = yaml.safe_load(f)
-assert cvals["image"]["tag"] == "v0.8.5", "Cloud GPU image tag must be pinned (v0.8.5)"
+assert cvals["image"]["tag"] == "v0.11.0", "Cloud GPU image tag must be pinned (v0.11.0)"
 assert cvals["model"]["passVllmCliArgs"] is True, "Cloud GPU values must enable passVllmCliArgs=true"
 assert cvals["modelCache"]["createPvc"] is True
 assert cvals["modelCache"]["mountPath"] == "/cache/huggingface"
-assert cvals["nodeSelector"] == {}
+assert cvals["nodeSelector"] is None, "values-cloud-gpu.yaml must set nodeSelector: null to clear default Kind selector"
 assert cvals["resources"]["limits"]["memory"] == "6Gi"
 assert cvals["updateStrategy"]["rollingUpdate"]["maxSurge"] == 0
 assert cvals["updateStrategy"]["rollingUpdate"]["maxUnavailable"] == 1
@@ -86,11 +88,20 @@ assert cvals["updateStrategy"]["rollingUpdate"]["maxUnavailable"] == 1
 with open("charts/ai-inference-service/values-cloud-gpu-7b-awq.yaml", "r", encoding="utf-8") as f:
     awq_vals = yaml.safe_load(f)
 assert awq_vals["replicaCount"] == 1
+assert awq_vals["nodeSelector"] is None, "values-cloud-gpu-7b-awq.yaml must set nodeSelector: null"
+assert awq_vals["image"]["tag"] == "v0.11.0"
 assert awq_vals["model"]["id"] == "Qwen/Qwen2.5-7B-Instruct-AWQ"
 assert awq_vals["model"]["gpuMemoryUtilization"] == "0.92"
 assert "--quantization=awq_marlin" in awq_vals["vllmArgs"]
 assert awq_vals["modelCache"]["mountPath"] == "/cache/huggingface"
-print("  [OK] Chart & all 3 values files parsed cleanly via PyYAML")
+
+with open("charts/ai-inference-service/values-local-rtx4050.yaml", "r", encoding="utf-8") as f:
+    rtx_vals = yaml.safe_load(f)
+assert rtx_vals["nodeSelector"] is None, "values-local-rtx4050.yaml must set nodeSelector: null"
+assert rtx_vals["model"]["id"] == "Qwen/Qwen2.5-3B-Instruct-AWQ"
+assert rtx_vals["model"]["enforceEager"] is True
+assert "--kv-cache-dtype=fp8" in rtx_vals["vllmArgs"]
+print("  [OK] Chart & all 4 values files parsed cleanly via PyYAML")
 PYEOF
 
 grep -q "namespace: ai-platform" charts/ai-inference-service/values.yaml && echo "  [OK] Canonical namespace 'ai-platform' in values.yaml"
@@ -99,6 +110,7 @@ grep -q "pvcName: hf-model-cache-pvc" charts/ai-inference-service/values.yaml &&
 grep -q "mountPath: /cache/huggingface" charts/ai-inference-service/values.yaml && echo "  [OK] Canonical HF_HOME='/cache/huggingface' configured"
 grep -q "createPvc" charts/ai-inference-service/templates/pvc.yaml && echo "  [OK] Conditional PVC guard (.Values.modelCache.createPvc) in templates/pvc.yaml"
 grep -q "gt (.Values.replicaCount | int) 1" charts/ai-inference-service/templates/pdb.yaml && echo "  [OK] PDB guarded to skip single-replica deployments"
+grep -q "app: vllm-serving" charts/ai-inference-service/templates/service.yaml && echo "  [OK] Canonical ServiceMonitor selector label 'app: vllm-serving' in templates/service.yaml"
 grep -q "if .Values.model.passVllmCliArgs" charts/ai-inference-service/templates/deployment.yaml && echo "  [OK] Conditional vLLM CLI args gate configured in deployment.yaml"
 grep -q "VLLM_CACHE_ROOT" charts/ai-inference-service/templates/deployment.yaml && echo "  [OK] VLLM_CACHE_ROOT=/tmp/vllm-cache configured in deployment.yaml"
 grep -q "VLLM_CONFIG_ROOT" charts/ai-inference-service/templates/deployment.yaml && echo "  [OK] VLLM_CONFIG_ROOT=/tmp/vllm-config configured in deployment.yaml"
@@ -109,14 +121,17 @@ grep -q 'command: \["sh", "-c", "sleep 5"\]' charts/ai-inference-service/templat
 grep -q -- "--enforce-eager" charts/ai-inference-service/templates/deployment.yaml && echo "  [OK] '--enforce-eager' CUDA Graph OOM protection configured"
 
 if command -v helm >/dev/null 2>&1; then
-  echo "  [RUN] Running helm lint & helm template across all 3 value files..."
+  echo "  [RUN] Running helm lint & helm template across all 4 value files..."
   helm lint charts/ai-inference-service
   helm template local-release charts/ai-inference-service -f charts/ai-inference-service/values.yaml | (! grep -q "kind: PersistentVolumeClaim")
   helm template cloud-4x charts/ai-inference-service -f charts/ai-inference-service/values-cloud-gpu.yaml >/dev/null
   RENDER_7B="$(helm template cloud-7b charts/ai-inference-service -f charts/ai-inference-service/values-cloud-gpu-7b-awq.yaml)"
   echo "$RENDER_7B" | grep -q "kind: PersistentVolumeClaim"
   echo "$RENDER_7B" | (! grep -q "kind: PodDisruptionBudget")
-  echo "  [OK] helm lint & template assertions passed for all 3 profiles"
+  echo "$RENDER_7B" | (! grep -q "nodeSelector:")
+  RENDER_RTX="$(helm template local-rtx charts/ai-inference-service -f charts/ai-inference-service/values-local-rtx4050.yaml)"
+  echo "$RENDER_RTX" | (! grep -q "nodeSelector:")
+  echo "  [OK] helm lint & template assertions passed for all 4 profiles"
 elif [ "$VERIFY_MODE" = "cluster" ]; then
   echo "  [FAIL] VERIFY_MODE=cluster requires 'helm' CLI"
   exit 1

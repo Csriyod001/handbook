@@ -12,7 +12,12 @@
   - [สารบัญหนังสือและโฟลเดอร์แล็บ (Table of Contents & Navigation)](#สารบัญหนังสือและโฟลเดอร์แล็บ-table-of-contents--navigation)
   - [ตารางแผนการเรียนรู้ 12 สัปดาห์ × 6 Modules × 3 Milestone Gates](#ตารางแผนการเรียนรู้-12-สัปดาห์--6-modules--3-milestone-gates)
   - [ตารางเชื่อมโยงกับเกณฑ์ผ่านระดับ Mid-Level (5 Definition of Done Traceability Matrix)](#ตารางเชื่อมโยงกับเกณฑ์ผ่านระดับ-mid-level-5-definition-of-done-traceability-matrix)
-  - [เริ่มต้นใช้งานอย่างรวดเร็ว (Quickstart)](#เริ่มต้นใช้งานอย่างรวดเร็ว-quickstart)
+  - [7. เริ่มต้นใช้งานอย่างรวดเร็ว 4 เส้นทาง (Quickstart — 4 Tracks)](#7-เริ่มต้นใช้งานอย่างรวดเร็ว-4-เส้นทาง-quickstart--4-tracks)
+    - [Track 1: อ่านหนังสือและแผนภาพแบบ Offline ทันที (Zero-Install)](#track-1-อ่านหนังสือและแผนภาพแบบ-offline-ทันที-zero-install)
+    - [Track 2: รันใน Containerized Lab (VS Code DevContainer / Docker Compose)](#track-2-รันใน-containerized-lab-vs-code-devcontainer--docker-compose)
+    - [Track 3: รันบนเครื่อง WSL2 / Linux ส่วนตัว (แนะนำสำหรับ HP Victus 32GB + RTX 4050 6GB)](#track-3-รันบนเครื่อง-wsl2--linux-ส่วนตัว-แนะนำสำหรับ-hp-victus-32gb--rtx-4050-6gb)
+    - [Track 4: รันบน AWS Cloud (งบ \$10–\$30 USD: S3 + ECR + `g6.xlarge` Spot L4)](#track-4-รันบน-aws-cloud-งบ-1030-usd-s3--ecr--g6xlarge-spot-l4)
+  - [8. หนังสือและแหล่งเรียนรู้มาตรฐานที่ใช้อ้างอิงร่วม (Curated 2025–2026 References)](#8-หนังสือและแหล่งเรียนรู้มาตรฐานที่ใช้อ้างอิงร่วม-curated-20252026-references)
 - [บทที่ 0: การเตรียมสภาพแวดล้อมวิศวกรรมและกลยุทธ์การเรียนแบบ Hybrid (Onboarding & 16GB RAM Local Setup)](#บทที่-0-การเตรียมสภาพแวดล้อมวิศวกรรมและกลยุทธ์การเรียนแบบ-hybrid-onboarding--16gb-ram-local-setup)
   - [1. ภาพรวมเส้นทางสายอาชีพและความคาดหวังที่สมจริง (Realistic Career Expectations)](#1-ภาพรวมเส้นทางสายอาชีพและความคาดหวังที่สมจริง-realistic-career-expectations)
     - [1.1 ทำไมองค์กรในไทยและทั่วโลกถึงต้องการตำแหน่งนี้อย่างเร่งด่วน?](#11-ทำไมองค์กรในไทยและทั่วโลกถึงต้องการตำแหน่งนี้อย่างเร่งด่วน)
@@ -25,9 +30,10 @@
     - [3.2 ติดตั้ง `uv` (Astral Python Package & Environment Manager)](#32-ติดตั้ง-uv-astral-python-package--environment-manager)
     - [3.3 ติดตั้ง `kubectl`, `kind`, และ `helm` (Kubernetes Toolchain)](#33-ติดตั้ง-kubectl-kind-และ-helm-kubernetes-toolchain)
     - [3.4 ติดตั้ง `OpenTofu` (`tofu`) และ `Trivy` (IaC & Security Scanner)](#34-ติดตั้ง-opentofu-tofu-และ-trivy-iac--security-scanner)
-  - [4. กฎความปลอดภัยในการเช่า Cloud GPU (Cloud GPU Budget & Provider Guide)](#4-กฎความปลอดภัยในการเช่า-cloud-gpu-cloud-gpu-budget--provider-guide)
-    - [4.1 ข้อแตกต่างสำคัญระหว่างผู้ให้บริการ GPU แบบ Container vs แบบ Full VM](#41-ข้อแตกต่างสำคัญระหว่างผู้ให้บริการ-gpu-แบบ-container-vs-แบบ-full-vm)
-    - [4.2 กฎเหล็ก 3 ข้อก่อนกดสร้าง Cloud GPU ทุกครั้ง (Zero-Surprise Billing Protocol)](#42-กฎเหล็ก-3-ข้อก่อนกดสร้าง-cloud-gpu-ทุกครั้ง-zero-surprise-billing-protocol)
+  - [4. กฎความปลอดภัยในการเช่า Cloud GPU และการใช้ AWS / GCP Credit](#4-กฎความปลอดภัยในการเช่า-cloud-gpu-และการใช้-aws--gcp-credit)
+    - [4.1 ข้อควรรู้ก่อนใช้ AWS / GCP Free Credit กับ GPU Quota](#41-ข้อควรรู้ก่อนใช้-aws--gcp-free-credit-กับ-gpu-quota)
+    - [4.2 ข้อแตกต่างสำคัญระหว่างผู้ให้บริการ GPU แบบ Container vs แบบ Full VM](#42-ข้อแตกต่างสำคัญระหว่างผู้ให้บริการ-gpu-แบบ-container-vs-แบบ-full-vm)
+    - [4.3 กฎเหล็ก 3 ข้อก่อนกดสร้าง Cloud GPU ทุกครั้ง (Zero-Surprise Billing Protocol)](#43-กฎเหล็ก-3-ข้อก่อนกดสร้าง-cloud-gpu-ทุกครั้ง-zero-surprise-billing-protocol)
   - [5. การตรวจสอบความพร้อมของเครื่องด้วย `make check-env`](#5-การตรวจสอบความพร้อมของเครื่องด้วย-make-check-env)
     - [5.1 เกณฑ์ผ่านของบทที่ 0 (Pass Criteria ก่อนเริ่มบทที่ 1)](#51-เกณฑ์ผ่านของบทที่-0-pass-criteria-ก่อนเริ่มบทที่-1)
 - [บทที่ 1: รากฐานระบบ AI ที่สร้างซ้ำได้จริง — Production Containers, Bounded Concurrency, CI/CD & Infrastructure as Code (Module 1)](#บทที่-1-รากฐานระบบ-ai-ที่สร้างซ้ำได้จริง--production-containers-bounded-concurrency-cicd--infrastructure-as-code-module-1)
@@ -43,7 +49,7 @@
   - [4. ปฏิบัติการ Hands-On Lab แบบ Step-by-Step (Module 1 Lab)](#4-ปฏิบัติการ-hands-on-lab-แบบ-step-by-step-module-1-lab)
     - [4.1 โจทย์ธุรกิจและข้อจำกัด (Business Scenario & Constraints)](#41-โจทย์ธุรกิจและข้อจำกัด-business-scenario--constraints)
     - [4.2 เส้นทางที่ 1: `No-GPU Local Path ($0 — 16GB RAM Safe)` (เส้นทางหลัก)](#42-เส้นทางที่-1-no-gpu-local-path-0--16gb-ram-safe-เส้นทางหลัก)
-    - [4.3 เส้นทางที่ 2: `Cloud L4 GPU Path (~$0.50 — ทางเลือกเสริมสำหรับทดสอบ Cost Guardrail IaC)`](#43-เส้นทางที่-2-cloud-l4-gpu-path-050--ทางเลือกเสริมสำหรับทดสอบ-cost-guardrail-iac)
+    - [4.3 เส้นทางที่ 2: `Cloud L4 GPU Path (Policy Guardrail + AWS Optional Track)`](#43-เส้นทางที่-2-cloud-l4-gpu-path-policy-guardrail--aws-optional-track)
   - [5. การจำลองความล้มเหลวและการกู้คืน (Failure Injection & Chaos Engineering Drill)](#5-การจำลองความล้มเหลวและการกู้คืน-failure-injection--chaos-engineering-drill)
     - [5.1 Chaos Drill #1: จำลองอาการพังเมื่อลืมผูก Volume ให้ `HF_HOME` ภายใต้ `readOnlyRootFilesystem: true`](#51-chaos-drill-1-จำลองอาการพังเมื่อลืมผูก-volume-ให้-hf_home-ภายใต้-readonlyrootfilesystem-true)
     - [5.2 Chaos Drill #2: จำลอง Unbounded Traffic Spike และการป้องกันด้วย Load Shedding (`HTTP 429`)](#52-chaos-drill-2-จำลอง-unbounded-traffic-spike-และการป้องกันด้วย-load-shedding-http-429)
@@ -74,6 +80,7 @@
     - [3.1 คณิตศาสตร์การคำนวณหน่วยความจำการ์ดจอ (GPU VRAM Sizing Math สำหรับสถาปัตยกรรม GQA)](#31-คณิตศาสตร์การคำนวณหน่วยความจำการ์ดจอ-gpu-vram-sizing-math-สำหรับสถาปัตยกรรม-gqa)
     - [3.2 ทำไมช่วง Prefill ถึงเป็น Compute-Bound แต่ช่วง Decode ถึงเป็น Memory-Bandwidth-Bound?](#32-ทำไมช่วง-prefill-ถึงเป็น-compute-bound-แต่ช่วง-decode-ถึงเป็น-memory-bandwidth-bound)
     - [3.3 ตารางเปรียบเทียบกลไกการแชร์ GPU บน Kubernetes (Time-Slicing vs MIG vs MPS)](#33-ตารางเปรียบเทียบกลไกการแชร์-gpu-บน-kubernetes-time-slicing-vs-mig-vs-mps)
+    - [3.4 ยุคใหม่ของการจัดสรร GPU: NVIDIA Device Plugin vs Kubernetes DRA (Dynamic Resource Allocation)](#34-ยุคใหม่ของการจัดสรร-gpu-nvidia-device-plugin-vs-kubernetes-dra-dynamic-resource-allocation)
   - [4. ปฏิบัติการ Hands-On Lab แบบ Step-by-Step (Module 2 Lab)](#4-ปฏิบัติการ-hands-on-lab-แบบ-step-by-step-module-2-lab)
     - [4.1 โจทย์ธุรกิจและข้อจำกัด (Business Scenario & Constraints)](#41-โจทย์ธุรกิจและข้อจำกัด-business-scenario--constraints-1)
     - [4.2 เส้นทางที่ 1: `No-GPU Local Path ($0 — Kind + Run:ai fake-gpu-operator)` (เส้นทางหลัก)](#42-เส้นทางที่-1-no-gpu-local-path-0--kind--runai-fake-gpu-operator-เส้นทางหลัก)
@@ -111,9 +118,11 @@
     - [3.2 พฤติกรรมเริ่มต้นของ `vLLM` V1 Engine (V1 Default Behaviors & Preemption)](#32-พฤติกรรมเริ่มต้นของ-vllm-v1-engine-v1-default-behaviors--preemption)
     - [3.3 คณิตศาสตร์การขยายขนาด KV-Cache Pool: ทำไม Quantization + `--gpu-memory-utilization` จึงเป็นตัวจริง (ไม่ใช่ `--max-model-len`)](#33-คณิตศาสตร์การขยายขนาด-kv-cache-pool-ทำไม-quantization----gpu-memory-utilization-จึงเป็นตัวจริง-ไม่ใช่---max-model-len)
     - [3.4 คณิตศาสตร์เศรษฐศาสตร์ต่อหน่วย (Unit Economics: Cost per 1M Tokens & Break-even Utilization)](#34-คณิตศาสตร์เศรษฐศาสตร์ต่อหน่วย-unit-economics-cost-per-1m-tokens--break-even-utilization)
+    - [3.5 สถาปัตยกรรม Inference ยุค 2026: Native FP8, Disaggregated PD, Multi-GPU TP/MoE & Agentic Serving](#35-สถาปัตยกรรม-inference-ยุค-2026-native-fp8-disaggregated-pd-multi-gpu-tpmoe--agentic-serving)
   - [4. Hands-on Lab (Dual-Path Execution)](#4-hands-on-lab-dual-path-execution)
     - [4.1 โครงสร้างไฟล์ใน `labs/m3-vllm/`](#41-โครงสร้างไฟล์ใน-labsm3-vllm)
     - [Path A: No-GPU Local Path (\$0 — รันบนเครื่อง Local 16GB RAM)](#path-a-no-gpu-local-path-0--รันบนเครื่อง-local-16gb-ram)
+    - [Path A2: Local RTX 4050 6GB CUDA Path (\$0 — สำหรับเครื่อง HP Victus / WSL2)](#path-a2-local-rtx-4050-6gb-cuda-path-0--สำหรับเครื่อง-hp-victus--wsl2)
     - [Path B: Cloud L4 GPU Path (รันจริงบนการ์ด NVIDIA L4 24GB VRAM)](#path-b-cloud-l4-gpu-path-รันจริงบนการ์ด-nvidia-l4-24gb-vram)
   - [5. Chaos & Troubleshooting Drills](#5-chaos--troubleshooting-drills)
     - [สถานการณ์จำลอง: KV-Cache Starvation & Preemption Thrashing Storm](#สถานการณ์จำลอง-kv-cache-starvation--preemption-thrashing-storm)
@@ -131,6 +140,7 @@
     - [คำถามข้อที่ 3: ความเข้าใจที่ถูกต้องเรื่อง `--max-model-len`, `--gpu-memory-utilization`, และ Quantization](#คำถามข้อที่-3-ความเข้าใจที่ถูกต้องเรื่อง---max-model-len---gpu-memory-utilization-และ-quantization)
     - [คำถามข้อที่ 4: การจูน Unified Chunked Prefill (`--max-num-batched-tokens`) เพื่อแลกเปลี่ยนระหว่าง TTFT กับ ITL](#คำถามข้อที่-4-การจูน-unified-chunked-prefill---max-num-batched-tokens-เพื่อแลกเปลี่ยนระหว่าง-ttft-กับ-itl)
     - [คำถามข้อที่ 5: การวิเคราะห์ Unit Economics และการตัดสินใจทางสถาปัตยกรรม (Build vs Buy)](#คำถามข้อที่-5-การวิเคราะห์-unit-economics-และการตัดสินใจทางสถาปัตยกรรม-build-vs-buy)
+    - [คำถามข้อที่ 6 (2026 Extension): Disaggregated Prefill–Decode (PD) และการตรวจ Eval Gate หลัง Quantization](#คำถามข้อที่-6-2026-extension-disaggregated-prefilldecode-pd-และการตรวจ-eval-gate-หลัง-quantization)
   - [9. ตรวจสอบความสำเร็จของบทที่ 3 (Verification Command)](#9-ตรวจสอบความสำเร็จของบทที่-3-verification-command)
     - [9.1 รายการไฟล์ส่งมอบใน `labs/m3-vllm/` (Deliverables)](#91-รายการไฟล์ส่งมอบใน-labsm3-vllm-deliverables)
     - [9.2 เกณฑ์ผ่าน (Pass Criteria Checklist)](#92-เกณฑ์ผ่าน-pass-criteria-checklist-2)
@@ -141,7 +151,7 @@
     - [วัตถุประสงค์การเรียนรู้เชิงสมรรถนะ (Competency Objectives)](#วัตถุประสงค์การเรียนรู้เชิงสมรรถนะ-competency-objectives-1)
   - [2. Architecture Overview](#2-architecture-overview-1)
     - [2.1 สถาปัตยกรรมระบบเต็มรูปแบบ: `LiteLLM Proxy` + `Kubernetes Gateway API Inference Extension (EPP)`](#21-สถาปัตยกรรมระบบเต็มรูปแบบ-litellm-proxy--kubernetes-gateway-api-inference-extension-epp)
-    - [2.2 กลไกการทำงานของ Kubernetes Gateway API Inference Extension (`InferenceModel`, `InferencePool`, และ `EPP`)](#22-กลไกการทำงานของ-kubernetes-gateway-api-inference-extension-inferencemodel-inferencepool-และ-epp)
+    - [2.2 กลไกการทำงานของ Kubernetes Gateway API Inference Extension (`InferencePool` v1, `InferenceObjective`, และ `EPP`)](#22-กลไกการทำงานของ-kubernetes-gateway-api-inference-extension-inferencepool-v1-inferenceobjective-และ-epp)
   - [3. Core Theory & Deep-Dive Engineering Math](#3-core-theory--deep-dive-engineering-math-1)
     - [3.1 สมการการให้คะแนนของ Endpoint Picker (EPP Routing Score Math)](#31-สมการการให้คะแนนของ-endpoint-picker-epp-routing-score-math)
     - [3.2 คณิตศาสตร์ความคุ้มค่าของ Response Caching บน AI Gateway (Cache Hit Savings Math)](#32-คณิตศาสตร์ความคุ้มค่าของ-response-caching-บน-ai-gateway-cache-hit-savings-math)
@@ -264,10 +274,10 @@
 
 [![Track](https://img.shields.io/badge/Primary_Track-GPU_Serving_%26_vLLM_on_K8s-0066CC?style=for-the-badge)](#)
 [![Secondary Track](https://img.shields.io/badge/Secondary_Track-Enterprise_AI_Gateway_%26_SRE-009966?style=for-the-badge)](#)
-[![Local Hardware](https://img.shields.io/badge/Local_Lab-16GB_RAM_(No_GPU_%240)-FF9900?style=for-the-badge)](#)
-[![Cloud Budget](https://img.shields.io/badge/Cloud_GPU_Validation-%3C_%2410_Total_(NVIDIA_L4)-76B900?style=for-the-badge)](#)
+[![Local Hardware](https://img.shields.io/badge/Local_Lab-16GB_Safe_%2F_32GB%2BRTX4050-FF9900?style=for-the-badge)](#)
+[![Cloud Budget](https://img.shields.io/badge/Cloud_GPU-Prepaid_%3C%2410_%7C_AWS_%2410--%2430-76B900?style=for-the-badge)](#)
 
-> **คู่มือวิศวกรรมเชิงปฏิบัติการ (Practical Engineering Handbook) และชุดแล็บครบวงจร** สำหรับปั้นวิศวกรจากระดับเริ่มต้น (เขียนโค้ดและใช้ Linux/Git พื้นฐานได้ แต่ยังไม่เคยดูแลระบบ Production) ไปสู่ระดับ **Mid-Level-Capable AI Platform / AI Infrastructure Engineer** ภายใน **12 สัปดาห์ (15 ชม./สัปดาห์ = 180 ชม.)**
+> **คู่มือวิศวกรรมเชิงปฏิบัติการ (Practical Engineering Handbook — 2026 Edition)** และชุดแล็บครบวงจร สำหรับปั้นวิศวกรจากระดับเริ่มต้น (เขียนโค้ดและใช้ Linux/Git พื้นฐานได้ แต่ยังไม่เคยดูแลระบบ Production) ไปสู่ระดับ **Mid-Level-Capable AI Platform / AI Infrastructure Engineer** ภายใน **12 สัปดาห์ (15 ชม./สัปดาห์ = 180 ชม.)**
 
 ---
 
@@ -277,9 +287,12 @@
 
 > **"จะนำ Open-weights LLM และบริการ AI ขึ้นรันบน Production Kubernetes อย่างไรให้มีความหน่วงต่ำ (Low TTFT/ITL), รับโหลดพร้อมกันได้สูงโดยไม่เกิดอาการการ์ดจอค้าง (CUDA OOM), ปลอดภัยตามกฎหมาย PDPA / OWASP LLM Top 10, มีระบบสลับสายอัตโนมัติเมื่อเกิดเหตุขัดข้อง (High Availability), และควบคุมต้นทุนต่อ 1 ล้าน Tokens ได้อย่างคุ้มค่าที่สุด"**
 
-หนังสือและชุดแล็บนี้ถูกออกแบบด้วยหลักการ **Backward Competency Design** โดยยึดแนวทาง **Hybrid Execution 85/15**:
-- **85% No-GPU Local Path (\$0 — ปลอดภัยสำหรับเครื่อง RAM 16GB):** ฝึกสร้างและควบคุมระบบทั้งหมดบนเครื่องคอมพิวเตอร์ส่วนตัวด้วย `Docker`, `OpenTofu`, `kind` (Multi-node Kubernetes), `Run:ai fake-gpu-operator`, `vllm-cpu` (`Qwen2.5-0.5B-Instruct`), และ `Lightweight FastAPI Mock vLLM Streaming Server (<80MB RAM/Pod)`
-- **15% On-Demand Cloud GPU Path (รวมทั้งหลักสูตรไม่เกิน \$8–\$10):** เช่าการ์ด **NVIDIA L4 (24GB VRAM)** รายชั่วโมง (~\$0.60–\$0.80/ชม.) เฉพาะช่วงรัน Benchmark และเก็บตัวเลข Optimization จริงเข้า Portfolio เท่านั้น
+หนังสือและชุดแล็บนี้ถูกออกแบบด้วยหลักการ **Backward Competency Design** โดยยึดแนวทาง **3-Tier Hybrid Execution**:
+- **Tier 1 — Local Lab (\$0 — 85–90% ของเวลาเรียน):**
+  - *โหมด RAM 16GB No-GPU Safe:* ใช้ `Docker`, `OpenTofu`, `kind`, `Run:ai fake-gpu-operator`, `vllm-cpu` (`Qwen2.5-0.5B-Instruct`), และ `Lightweight FastAPI Mock vLLM Streaming Server (<80MB RAM/Pod)`
+  - *โหมด HP Victus / WSL2 (RAM 32GB + RTX 4050 6GB Ada Lovelace):* รัน Full Local K8s Stack (Gateway + Prometheus + Grafana + KEDA) พร้อมกันโดยไม่เกิด OOM และรัน **`vLLM` V1 บน CUDA จริง** ด้วย `Qwen/Qwen2.5-1.5B-Instruct` vs `Qwen/Qwen2.5-3B-Instruct-AWQ` + `--kv-cache-dtype fp8`
+- **Tier 2 — On-Demand Cloud GPU 24GB (Prepaid < \$10 หรือ AWS Spot \$10–\$30):** เช่าการ์ด **NVIDIA L4 (24GB VRAM)** (`RunPod`/`Vast.ai` หรือ **AWS EC2 `g6.xlarge` Spot + Auto-Terminate 180 นาที**) เฉพาะช่วงรัน Benchmark `Qwen2.5-7B` (`BF16` vs `AWQ` vs `FP8`) และเก็บตัวเลข Optimization จริงเข้า Portfolio
+- **Tier 3 — Optional Cloud Platform Infra (`labs/optional-cloud-aws/`):** ใช้ OpenTofu สร้าง Private S3 Model Cache, Private ECR, IAM Role และ AWS Budget Alarm (เปิด-ปิดโหมด `enable_gpu_ec2 = true` ได้เมื่อพร้อมรัน `g6.xlarge` Spot) พร้อมตารางเทียบ Service ของ GCP
 
 ---
 
@@ -287,7 +300,7 @@
 
 ```mermaid
 flowchart TD
-    Start(["เริ่มต้น: บทที่ 0 Onboarding & Setup\n(ตรวจสภาพแวดล้อม 16GB RAM ด้วย make check-env)"])
+    Start(["เริ่มต้น: บทที่ 0 Onboarding & Setup\n(ตรวจสภาพแวดล้อม 16GB–32GB / RTX 4050 ด้วย make check-env)"])
 
     subgraph Phase1 ["Phase 1: Cloud-Native & GPU Foundations (Weeks 1–4)"]
         M1["บทที่ 1 (W1–W2): Reproducible AI Foundations\n• Multi-stage Docker + uv + Non-root + Read-only RootFS\n• FastAPI Bounded Queue (HTTP 429 Load Shedding)\n• OpenTofu IaC + GitHub Actions CI + Trivy Scan"]
@@ -358,14 +371,15 @@ flowchart LR
 
 | ลำดับ | บทเรียนในหนังสือ (`chapters/`) | โฟลเดอร์โค้ดปฏิบัติการ (`labs/`) | เวลาเรียน | สถานะ |
 | :--- | :--- | :--- | :---: | :---: |
-| **SSOT** | [**`SPEC_AND_STYLE_GUIDE.md`**](../SPEC_AND_STYLE_GUIDE.md)<br>*(มาตรฐานโครงสร้างบท ตัวแปรกลาง และกฎความถูกต้องทางวิศวกรรม 9 ข้อ)* | — | อ้างอิงตลอดเล่ม | พร้อมใช้งาน |
-| **บทที่ 0** | [**`chapters/00-onboarding-and-setup.md`**](../chapters/00-onboarding-and-setup.md)<br>*การเตรียมเครื่อง Local 16GB RAM, การติดตั้งเครื่องมือ (`Docker`, `kind`, `kubectl`, `helm`, `tofu`, `uv`) และวิธีป้องกันเครื่องค้าง* | [`Makefile`](../Makefile) (`make check-env`) | 2 ชม. (ก่อนเริ่ม W1) | พร้อมใช้งาน |
+| **SSOT** | [**`SPEC_AND_STYLE_GUIDE.md`**](../SPEC_AND_STYLE_GUIDE.md)<br>*(มาตรฐานโครงสร้างบท ตัวแปรกลาง และกฎความถูกต้องทางวิศวกรรม 12 ข้อ)* | — | อ้างอิงตลอดเล่ม | พร้อมใช้งาน |
+| **บทที่ 0** | [**`chapters/00-onboarding-and-setup.md`**](../chapters/00-onboarding-and-setup.md)<br>*การเตรียมเครื่อง Local 16GB–32GB (รองรับ RTX 4050 6GB & Containerized Lab), การติดตั้งเครื่องมือ (`Docker`, `kind`, `kubectl`, `helm`, `tofu`, `uv`) และวิธีป้องกันเครื่องค้าง* | [`Makefile`](../Makefile) (`make check-env`) | 2 ชม. (ก่อนเริ่ม W1) | พร้อมใช้งาน |
 | **บทที่ 1** | [**`chapters/01-foundations-containers-iac.md`**](../chapters/01-foundations-containers-iac.md)<br>*Production AI Containers (`uv`, Multi-stage, Non-root), FastAPI Bounded Queue, GitHub Actions CI (`Trivy`) & OpenTofu IaC* | [`labs/m1-foundations/`](../labs/m1-foundations/) | สัปดาห์ที่ 1–2 (30 ชม.) | พร้อมใช้งาน |
 | **บทที่ 2** | [**`chapters/02-kubernetes-gpu-orchestration.md`**](../chapters/02-kubernetes-gpu-orchestration.md)<br>*Kubernetes Probes สำหรับ LLM, Helm Chart, Shared `HF_HOME` Cache, GPU VRAM Math (GQA), Time-Slicing vs MIG & Fake GPU* | [`labs/m2-k8s-gpu/`](../labs/m2-k8s-gpu/) | สัปดาห์ที่ 3–4 (30 ชม.) | พร้อมใช้งาน |
 | **บทที่ 3** | [**`chapters/03-vllm-serving-optimization.md`**](../chapters/03-vllm-serving-optimization.md)<br>*เจาะลึก `vLLM` V1 Engine, PagedAttention, Continuous Batching, Prefix Caching (APC), Quantization (AWQ/FP8) & Unit Economics* | [`labs/m3-vllm/`](../labs/m3-vllm/) | สัปดาห์ที่ 5–6 (30 ชม.) | พร้อมใช้งาน |
 | **บทที่ 4** | [**`chapters/04-ai-gateway-governance.md`**](../chapters/04-ai-gateway-governance.md)<br>*Enterprise AI Gateway (`LiteLLM Proxy`), Multi-tenancy, Redis Cache, Automated Fallbacks, PDPA Guardrails & K8s Gateway EPP* | [`labs/m4-gateway/`](../labs/m4-gateway/) | สัปดาห์ที่ 7–8 (30 ชม.) | พร้อมใช้งาน |
 | **บทที่ 5** | [**`chapters/05-observability-autoscaling-sre.md`**](../chapters/05-observability-autoscaling-sre.md)<br>*AI Observability (`Prometheus`, `Grafana`, `DCGM`, `vLLM` V1 Metrics), `KEDA` Autoscaling, Chaos Drill, Runbook & Postmortem* | [`labs/m5-observability-sre/`](../labs/m5-observability-sre/) | สัปดาห์ที่ 9–10 (30 ชม.) | พร้อมใช้งาน |
 | **บทที่ 6** | [**`chapters/06-capstone-siamshield-ai.md`**](../chapters/06-capstone-siamshield-ai.md)<br>*Capstone Project (`Project SiamShield AI`): System Design Doc, End-to-End Multi-Tier Platform, Optimization & Interview Defense* | [`labs/m6-capstone-siamshield/`](../labs/m6-capstone-siamshield/) | สัปดาห์ที่ 11–12 (30 ชม.) | พร้อมใช้งาน |
+| **เสริม Cloud** | [**`labs/optional-cloud-aws/README.md`**](../labs/optional-cloud-aws/README.md)<br>*Optional AWS Cloud Track: S3 Model Cache, ECR, IAM, Budgets & `g6.xlarge` Spot (NVIDIA L4 + Auto-Terminate)* | [`labs/optional-cloud-aws/`](../labs/optional-cloud-aws/) | เสริมช่วง W2/W3/W6 | พร้อมใช้งาน |
 | **รวมเล่ม** | **โฟลเดอร์หนังสือฉบับสมบูรณ์ (`dist/`)** | [`dist/`](../dist/) | — | สำหรับรวมเล่ม |
 
 ---
@@ -385,7 +399,7 @@ flowchart LR
 | **W9** | **Module 5** | AI Observability Stack: `Prometheus`, `Grafana`, `DCGM Exporter` & `vLLM` V1 Metrics (`kv_cache_usage_perc`, `prefix_cache_hits_total`) | `labs/m5-observability-sre/`: Grafana Dashboard JSON + Alert Rules | — |
 | **W10** | **Module 5** | Event-Driven Autoscaling ด้วย `KEDA` (Queue/KV-Cache triggers), Chaos Failure Injection, Runbook & Blameless Postmortem | `keda-vllm-scaledobject.yaml` + `docs/runbook-kvcache-saturation-and-high-ttft.md` + `docs/postmortem-001-peak-hour-latency-outage.md` + `docs/adr-004-observability-and-keda-autoscaling.md` | — |
 | **W11** | **Module 6** | Capstone Design Doc & End-to-End Implementation (`Project SiamShield AI`: Multi-Tier `tier-realtime` + `tier-batch` Platform) | `labs/m6-capstone-siamshield/`: `docs/design-doc.md` + Full Stack Repo | — |
-| **W12** | **Module 6 + Buffer** | Capstone Two-Tier Load Testing & Optimization, Chaos Drill, Architecture Defense & **Final Buffer** | `optimization-benchmark-report.md` + `docs/runbook-siamshield-incident.md` + `docs/postmortem-siamshield-drill.md` + `docs/interview-defense-guide.md` | **Gate 3 (จบ W12):** ผ่านเกณฑ์ **Definition of Done (DoD)** ครบทั้ง 5 ข้อ |
+| **W12** | **Module 6 + Buffer** | Capstone Two-Tier Load Testing & Optimization, Chaos Drill, Architecture Defense & **Final Buffer** | `reports/capstone-optimization-report.md` + `docs/runbooks/capstone-runbook.md` + `docs/postmortems/capstone-postmortem.md` + `docs/interview-defense-guide.md` | **Gate 3 (จบ W12):** ผ่านเกณฑ์ **Definition of Done (DoD)** ครบทั้ง 5 ข้อ |
 
 ---
 
@@ -399,22 +413,59 @@ flowchart LR
 | **DoD #2: Reproducible IaC & Automated CI/CD** | สร้างและทำลายโครงสร้างพื้นฐานรวมถึง Deploy ระบบซ้ำได้ 100% ด้วยโค้ด (`OpenTofu` + `Helm` + `GitHub Actions` + `Trivy`) โดยไม่ต้องคลิกตั้งค่าด้วยมือใน Console | บทที่ 1, 2, 6<br>(`m1`, `m2`, `m6`) | • Multi-stage `Dockerfile` (`uv`, Non-root)<br>• OpenTofu Modules (`infra/`)<br>• Production Helm Chart (`charts/`)<br>• `.github/workflows/ci.yml` |
 | **DoD #3: AI Observability & Measurable Optimization** | ติดตั้งระบบวัดผลระดับ Token/GPU (`Prometheus` + `Grafana` + `vLLM` V1 / `DCGM`), รัน Load Test และปรับจูนจนได้ตัวเลข **Before vs After** ที่ดีขึ้นอย่างมีนัยสำคัญ | บทที่ 2, 3, 4, 5, 6<br>(`m2`, `m3`, `m4`, `m5`, `m6`) | • `vram_calculator.py`<br>• `optimization-report-template.md` (TTFT ลด $\ge 50\%$, TPS เพิ่ม $\ge 40\%$)<br>• `grafana-dashboard-vllm-v1.json` + `KEDA ScaledObject` |
 | **DoD #4: Incident Management, Runbook & Postmortem** | จำลองเหตุวิกฤตจริง (Chaos Injection: KV-Cache เต็ม, Noisy Neighbor, Primary Pod ค้าง, Bad Rollout) วินิจฉัยผ่านกราฟ กู้คืนระบบ และเขียน Runbook + Blameless Postmortem | บทที่ 4, 5, 6<br>(`m4`, `m5`, `m6`) | • `tests/test_gateway_resilience.py`<br>• `chaos/trigger_incident.py`<br>• `docs/runbook-kvcache-saturation-and-high-ttft.md`<br>• `docs/postmortem-001-peak-hour-latency-outage.md` |
-| **DoD #5: Mid-Level Interview Trade-Off Defense** | อธิบายเหตุผลเชิงวิศวกรรมว่า **"ทำไมถึงเลือกวิธีนี้"** และ **"ได้อะไรแลกกับเสียอะไร"** พร้อมคำนวณตัวเลขสดและตอบโจทย์เมื่อเงื่อนไขเปลี่ยน (เช่น โหลดพุ่ง 10 เท่า หรือเปลี่ยนเป็นโมเดล 70B) | ทุกบท (บทที่ 1–6 หัวข้อที่ 8) | • คำถามสัมภาษณ์เชิงลึก 28 ข้อพร้อมเฉลย Model Answer ในบทที่ 1–6<br>• `docs/interview-defense-guide.md` ใน Capstone |
+| **DoD #5: Mid-Level Interview Trade-Off Defense** | อธิบายเหตุผลเชิงวิศวกรรมว่า **"ทำไมถึงเลือกวิธีนี้"** และ **"ได้อะไรแลกกับเสียอะไร"** พร้อมคำนวณตัวเลขสดและตอบโจทย์เมื่อเงื่อนไขเปลี่ยน (เช่น โหลดพุ่ง 10 เท่า หรือเปลี่ยนเป็นโมเดล 70B) | ทุกบท (บทที่ 1–6 หัวข้อที่ 8) | • คำถามสัมภาษณ์เชิงลึก 29 ข้อพร้อมเฉลย Model Answer ในบทที่ 1–6<br>• `docs/interview-defense-guide.md` ใน Capstone |
 
 ---
 
-## เริ่มต้นใช้งานอย่างรวดเร็ว (Quickstart)
+## 7. เริ่มต้นใช้งานอย่างรวดเร็ว 4 เส้นทาง (Quickstart — 4 Tracks)
 
-1. **อ่านบทที่ 0 เพื่อเตรียมเครื่องและติดตั้งเครื่องมือพื้นฐาน:**
+ดูรายละเอียดขั้นตอนติดตั้งและแก้ปัญหาครบทุกสภาพแวดล้อมได้ที่ [**`PORTABILITY_AND_QUICKSTART.md`**](../PORTABILITY_AND_QUICKSTART.md)
+
+### Track 1: อ่านหนังสือและแผนภาพแบบ Offline ทันที (Zero-Install)
+เปิดไฟล์ [**`index.html`**](../index.html) หรือ [**`dist/AI_Infra_Interactive_Handbook.html`**](../dist/AI_Infra_Interactive_Handbook.html) ในเบราว์เซอร์ (รองรับ 100% แบบไม่มีอินเทอร์เน็ต) หรือสร้างไฟล์พกพา:
+```bash
+python3 scripts/make package
+python3 scripts/make verify-archive
+```
+
+### Track 2: รันใน Containerized Lab (VS Code DevContainer / Docker Compose)
+เหมาะสำหรับผู้ที่ไม่อยากติดตั้งเครื่องมือ CLI ทีละตัวบนเครื่องหลัก:
+```bash
+python3 scripts/make verify-container
+docker compose -f docker-compose.lab.yml run --rm --service-ports lab
+```
+
+### Track 3: รันบนเครื่อง WSL2 / Linux ส่วนตัว (แนะนำสำหรับ HP Victus 32GB + RTX 4050 6GB)
+1. **อ่านบทที่ 0 เพื่อตั้งค่า `.wslconfig` (22GB RAM) และ NVIDIA Container Toolkit:**
    เปิดอ่านไฟล์ [**`chapters/00-onboarding-and-setup.md`**](../chapters/00-onboarding-and-setup.md)
-2. **รันคำสั่งตรวจสอบความพร้อมของเครื่อง (Hardware, RAM, Docker, Kind, Kubectl, Helm, OpenTofu, uv):**
+2. **ตรวจสอบความพร้อมของเครื่อง (RAM, GPU VRAM, Docker, Kind, Kubectl, Helm, OpenTofu, uv):**
    ```bash
-   make check-env
+   python3 scripts/make check-env
    ```
-3. **ดูคำสั่งช่วยเหลือทั้งหมดในโปรเจกต์:**
+3. **รันชุดตรวจสอบอัตโนมัติแบบ Static ครบทุกโมดูล:**
    ```bash
-   make help
+   python3 scripts/make verify-static
    ```
+
+### Track 4: รันบน AWS Cloud (งบ \$10–\$30 USD: S3 + ECR + `g6.xlarge` Spot L4)
+1. ขอ GPU Service Quota ล่วงหน้า (`All G and VT Spot Instance Requests = 4`) และตั้ง AWS Budgets
+2. ตรวจสอบโค้ดและเปิดใช้งานผ่าน [**`labs/optional-cloud-aws/README.md`**](../labs/optional-cloud-aws/README.md):
+   ```bash
+   python3 scripts/make verify-aws-optional
+   ```
+
+---
+
+## 8. หนังสือและแหล่งเรียนรู้มาตรฐานที่ใช้อ้างอิงร่วม (Curated 2025–2026 References)
+
+| หมวดหมู่ | ชื่อหนังสือ / เอกสารทางการ | จุดเด่นที่นำมาประยุกต์ใช้ใน Handbook ฉบับ 2026 |
+| :--- | :--- | :--- |
+| **GPU & Inference Performance** | **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025)* | เจาะลึก GPU Kernels, Roofline Model, vLLM/SGLang/NVIDIA Dynamo, Disaggregated Prefill–Decode และ Checklist จูน Production |
+| **AI Platform & Eval** | **AI Engineering** *(Chip Huyen, O'Reilly 2025)* | กรอบการประเมินคุณภาพโมเดล (Eval Gate หลัง Quantization), Latency/Cost Engineering, Guardrails |
+| **Distributed & Hardware Scaling** | **The Ultra-Scale Playbook** *(Hugging Face, 2025)* & **How to Scale Your Model** *(Google DeepMind, 2025)* | คณิตศาสตร์ Memory Bandwidth, Arithmetic Intensity, Tensor/Pipeline/Expert Parallelism สำหรับโมเดล 70B+ และ MoE |
+| **Kubernetes & Platform Engineering** | **Production Kubernetes** *(O'Reilly)*, **Kubernetes Patterns (2nd Ed.)**, **Platform Engineering** *(O'Reilly)* | การออกแบบ Multi-tenant K8s, `NetworkPolicy`, Golden Paths, Kubernetes DRA และ Workload Isolation |
+| **SRE & Incident Management** | **The Site Reliability Workbook** *(Google, Free Online)* | Multi-Window Error Budget Burn-Rate Alerts, Runbook Design และ Blameless Postmortem |
+| **2026 Open Standards** | **Kubernetes Gateway API Inference Extension (`v1`) & CNCF `llm-d`**, **OWASP LLM Top 10 (2025)**, **OTel GenAI SemConv** | มาตรฐาน `InferencePool v1`, `InferenceObjective`, KV-Cache-Aware Routing และความปลอดภัยระดับองค์กร |
 
 ---
 
@@ -424,7 +475,7 @@ flowchart LR
 
 > **เวลาที่ใช้:** ~2 ชั่วโมง (ทำครั้งเดียวก่อนเริ่มสัปดาห์ที่ 1)  
 > **ค่าใช้จ่าย:** \$0.00 (รันบนเครื่องคอมพิวเตอร์ส่วนตัว 100%)  
-> **เป้าหมายของบทนี้:** ตั้งค่าเครื่องคอมพิวเตอร์ส่วนตัว (Linux, Windows WSL2 หรือ macOS ที่มี RAM 16GB) ให้พร้อมรันชุดแล็บ Kubernetes, OpenTofu, vLLM และระบบ Observability ตลอดทั้ง 12 สัปดาห์โดยไม่เกิดอาการเครื่องค้าง (Out-of-Memory) และวางมาตรการควบคุมงบ Cloud GPU ไม่ให้เกิน \$10 ตลอดหลักสูตร
+> **เป้าหมายของบทนี้:** ตั้งค่าเครื่องคอมพิวเตอร์ส่วนตัว (Linux, Windows WSL2 RAM 16GB หรือ **HP Victus 32GB + RTX 4050 6GB**, macOS, หรือ **Containerized Lab** ใน [`PORTABILITY_AND_QUICKSTART.md`](../PORTABILITY_AND_QUICKSTART.md)) ให้พร้อมรันชุดแล็บ Kubernetes, OpenTofu, vLLM และระบบ Observability ตลอดทั้ง 12 สัปดาห์โดยไม่เกิดอาการเครื่องค้าง (Out-of-Memory) และวางมาตรการควบคุมงบ Cloud GPU (Prepaid < \$10 หรือ AWS Spot \$10–\$30) อย่างปลอดภัย
 
 ---
 
@@ -507,17 +558,29 @@ $$\text{Total Local RAM Usage} = \underbrace{3.5\text{ GB}}_{\text{OS / WSL2}} +
 
 ## 3. ขั้นตอนการติดตั้งเครื่องมือประจำเครื่อง (Step-by-Step Tooling Setup)
 
-รองรับระบบปฏิบัติการ **Ubuntu / Debian Linux**, **Windows 11 ที่เปิดใช้งาน WSL2 (Ubuntu 22.04/24.04)**, หรือ **macOS (Apple Silicon / Intel)**
+รองรับระบบปฏิบัติการ **Ubuntu / Debian Linux**, **Windows 11 ที่เปิดใช้งาน WSL2 (Ubuntu 22.04/24.04)**, **macOS (Apple Silicon / Intel)** หรือรันผ่าน **Docker Compose / VS Code DevContainer** (ดูรายละเอียดใน [`PORTABILITY_AND_QUICKSTART.md`](../PORTABILITY_AND_QUICKSTART.md))
 
-> **คำแนะนำสำหรับผู้ใช้ Windows WSL2:**  
-> ให้สร้างหรือแก้ไขไฟล์ `%UserProfile%\.wslconfig` บนฝั่ง Windows เพื่ออนุญาตให้ WSL2 ใช้ RAM ได้อย่างน้อย 12GB และกำหนด Swap สำรองดังนี้:
+> **คำแนะนำสำหรับผู้ใช้ Windows WSL2 (เลือกตาม RAM เครื่องจริง):**  
+> ให้สร้างหรือแก้ไขไฟล์ `%UserProfile%\.wslconfig` บนฝั่ง Windows แล้วรัน `wsl --shutdown` ใน PowerShell ก่อนเปิด Ubuntu ขึ้นมาใหม่:
+> - **กรณีเครื่อง RAM 16GB:**
 > ```ini
 > [wsl2]
 > memory=12GB
 > processors=4
 > swap=4GB
 > ```
-> จากนั้นเปิด PowerShell แล้วรัน `wsl --shutdown` ก่อนเปิด Ubuntu ขึ้นมาใหม่
+> - **กรณีเครื่อง RAM 32GB (เช่น HP Victus 16-r0357tx พร้อม RTX 4050 6GB):**
+> ```ini
+> [wsl2]
+> memory=22GB
+> processors=10
+> swap=4GB
+> ```
+> *หมายเหตุสำหรับ HP Victus / WSL2 ที่มี NVIDIA GPU:* ติดตั้ง Game Ready / Studio Driver เวอร์ชันล่าสุดบนฝั่ง Windows (ไม่ต้องลง Driver ซ้ำใน WSL2) จากนั้นติดตั้ง **NVIDIA Container Toolkit** ใน Ubuntu WSL2 เพื่อให้ `docker run --gpus all` ส่งผ่าน RTX 4050 6GB เข้าคอนเทนเนอร์ `vLLM` ได้ทันที:
+> ```bash
+> nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+> docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
+> ```
 
 ### 3.1 ติดตั้งแพ็กเกจพื้นฐานและ Docker Engine
 ตรวจสอบให้แน่ใจว่ามี `curl`, `git`, `make`, `jq` และ `docker` ที่สามารถรันได้โดยไม่ต้องพิมพ์ `sudo`:
@@ -525,7 +588,7 @@ $$\text{Total Local RAM Usage} = \underbrace{3.5\text{ GB}}_{\text{OS / WSL2}} +
 ```bash
 # สำหรับ Ubuntu / Debian / WSL2
 sudo apt-get update && sudo apt-get install -y \
-  ca-certificates curl gnupg lsb-release git make jq unzip build-essential
+  ca-certificates curl gnupg lsb-release git jq unzip build-essential make
 
 # หากยังไม่ได้ติดตั้ง Docker Engine
 if ! command -v docker &> /dev/null; then
@@ -577,22 +640,29 @@ curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/inst
 
 ---
 
-## 4. กฎความปลอดภัยในการเช่า Cloud GPU (Cloud GPU Budget & Provider Guide)
+## 4. กฎความปลอดภัยในการเช่า Cloud GPU และการใช้ AWS / GCP Credit
 
-ในหลักสูตรนี้ คุณจะใช้ Cloud GPU เฉพาะใน **บทที่ 2 (ทางเลือกเสริม 2 ชม.)**, **บทที่ 3 (4 ชม.)**, และ **บทที่ 6 (4–6 ชม.)** รวมเวลาเช่าจริงไม่เกิน 10–12 ชั่วโมง (คิดเป็นเงินเพียง **~\$7.00–\$9.50** บนการ์ด NVIDIA L4 24GB)
+ในหลักสูตรนี้ คุณจะใช้ Cloud GPU 24GB เฉพาะใน **บทที่ 2 (ทางเลือกเสริม 2 ชม.)**, **บทที่ 3 (4 ชม.)**, **บทที่ 5 (2 ชม.)**, และ **บทที่ 6 (4 ชม.)** รวมเวลาเช่าจริงประมาณ 10–12 ชั่วโมง (คิดเป็นเงินเพียง **~\$7.00–\$9.50** บน RunPod/Vast.ai หรือ **~\$6–\$12** ด้วย **AWS `g6.xlarge` Spot** ภายใต้งบ \$10–\$30)
 
-### 4.1 ข้อแตกต่างสำคัญระหว่างผู้ให้บริการ GPU แบบ Container vs แบบ Full VM
+### 4.1 ข้อควรรู้ก่อนใช้ AWS / GCP Free Credit กับ GPU Quota
+| ช่องทาง Cloud | สถานะ GPU Quota เริ่มต้น | เหมาะกับงานแบบไหนใน Handbook นี้? |
+| :--- | :--- | :--- |
+| **Prepaid GPU Cloud (`RunPod`, `Vast.ai`)** | พร้อมใช้ทันทีหลังเติม \$10 | **คล่องตัวที่สุดสำหรับบทที่ 3 & 6:** ไม่ต้องขอ Quota, ตัดเงินเฉพาะเครดิตที่เติม |
+| **AWS Paid Plan + Spot `g6.xlarge` (\$10–\$30)** *(ดูคู่มือใน [`labs/optional-cloud-aws/README.md`](../labs/optional-cloud-aws/README.md))* | Default = `0 vCPU` *(ต้องยื่นขอ `All G and VT Spot Instance Requests = 4` ใน `us-east-1` ล่วงหน้า)* | **แนะนำถ้าต้องการฝึก AWS จริง:** ได้ทั้ง `1x NVIDIA L4 (24GB)`, ฟรี `250GB NVMe`, S3 Model Cache, ECR และตั้ง Auto-Terminate `shutdown -h +180` |
+| **GCP \$300 Free Trial** | **ถูกบล็อก (`0`, ปรับไม่ได้)** จนกว่าจะ Upgrade เป็น Paid Account และสร้าง Usage History | ไม่แนะนำให้พึ่งสำหรับ GPU Lab ในช่วงสัปดาห์แรกเพราะมักติด Ticket ขอ Quota หลายวัน |
+
+### 4.2 ข้อแตกต่างสำคัญระหว่างผู้ให้บริการ GPU แบบ Container vs แบบ Full VM
 วิศวกร AI Infrastructure ต้องแยกแยะรูปแบบของ Cloud GPU ให้ถูกต้องตามลักษณะงาน:
 
 | รูปแบบบริการ Cloud GPU | ตัวอย่างผู้ให้บริการ | ข้อจำกัดทางสถาปัตยกรรม | ใช้ในบทเรียนไหนของคู่มือนี้? |
 | :--- | :--- | :--- | :--- |
 | **1. GPU Container-as-a-Service (Rootless/Unprivileged Pod)** | **RunPod Pods**, **Modal Labs**, **Vast.ai (Container Mode)** | คุณได้รับมอบหมายเป็น Docker Container ที่ต่อการ์ดจอมาให้แล้ว **ไม่มี Linux Kernel / `systemd` เป็นของตัวเอง** จึงไม่สามารถติดตั้ง `k3s` หรือ NVIDIA GPU Operator ซ้อนข้างในได้ | **เหมาะที่สุดสำหรับบทที่ 3 และบทที่ 6:** ใช้รัน `vLLM` V1 บนการ์ด NVIDIA L4 (24GB) เพื่อวัดผล Benchmark จริงได้ทันทีในราคาประหยัด (~\$0.60/ชม.) |
-| **2. Full GPU Virtual Machine (IaaS VM พร้อม Kernel เต็มรูปแบบ)** | **GCP Spot VM (`g2-standard-8` L4)**, **AWS EC2 (`g6.xlarge` L4)**, **Vast.ai (VM Mode)** | ได้เครื่องเสมือนที่มี Kernel และสิทธิ์ `root` เต็มรูปแบบ สามารถติดตั้ง `k3s`/`kubeadm`, NVIDIA Container Toolkit และ NVIDIA Device Plugin ได้ | **ใช้เฉพาะทางเลือกเสริมในบทที่ 2:** เมื่อต้องการทดสอบติดตั้ง `k3s` + NVIDIA Time-Slicing ConfigMap บนเครื่องจริง |
+| **2. Full GPU Virtual Machine (IaaS VM พร้อม Kernel เต็มรูปแบบ)** | **AWS EC2 `g6.xlarge` Spot (L4)**, **GCP Spot VM (`g2-standard-8` L4)**, **Vast.ai (VM Mode)** | ได้เครื่องเสมือนที่มี Kernel และสิทธิ์ `root` เต็มรูปแบบ สามารถติดตั้ง `k3s`/`kubeadm`, NVIDIA Container Toolkit และ NVIDIA Device Plugin ได้ | **ใช้ได้ครบทั้งบทที่ 2, 3, 5 และ 6:** โดยเฉพาะ AWS `g6.xlarge` Spot ที่มีสคริปต์ OpenTofu + Dead-Man's Switch ใน `labs/optional-cloud-aws/` |
 
-### 4.2 กฎเหล็ก 3 ข้อก่อนกดสร้าง Cloud GPU ทุกครั้ง (Zero-Surprise Billing Protocol)
-1. **ใช้การเติมเงินแบบ Prepaid Credit เสมอ:** เลือกผู้ให้บริการที่ตัดเงินจากเครดิตที่เติมไว้ล่วงหน้า (เช่น เติมไว้ \$10 บน RunPod หรือ Vast.ai) เพื่อป้องกันไม่ให้เกิดบิลค้างชำระเกินงบแม้ในกรณีที่ลืมปิดเครื่อง
-2. **ตั้งเวลาปิดเครื่องอัตโนมัติ (Auto-Shutdown Timer):** ทุกครั้งที่เริ่มเซสชันบน Cloud GPU ให้รันคำสั่งตั้งเวลาปิดตัวเองล่วงหน้า เช่น ตั้งให้ปิดเครื่องภายใน 3 ชั่วโมงเพื่อกันลืม
-3. **ทำลายทรัพยากรด้วย `tofu destroy` ทันทีที่เก็บผลเสร็จ:** ดาวน์โหลดไฟล์ผลลัพธ์ JSON/Markdown กลับมาที่โฟลเดอร์ `labs/` บนเครื่องส่วนตัว แล้วสั่งทำลายอินสแตนซ์พร้อมตรวจสอบในหน้า Billing Dashboard ว่าไม่มีทั้ง GPU Pod และ Network Volume ค้างอยู่
+### 4.3 กฎเหล็ก 3 ข้อก่อนกดสร้าง Cloud GPU ทุกครั้ง (Zero-Surprise Billing Protocol)
+1. **ตั้งเพดานงบ / ใช้ Prepaid Credit เสมอ:** บน RunPod/Vast.ai ให้เติมไว้ \$10; ส่วนบน AWS ให้ตั้ง **AWS Budgets Alert ที่ \$5, \$15, \$25** ก่อนเปิด `g6.xlarge`
+2. **ตั้งเวลาปิดเครื่องอัตโนมัติ (Dead-Man's Switch):** ทุกครั้งที่เริ่มเซสชันบน Cloud GPU ให้ตั้ง `instance_initiated_shutdown_behavior = "terminate"` คู่กับ `sudo shutdown -h +180` เพื่อกันลืม
+3. **ทำลายทรัพยากรด้วย `tofu destroy` ทันทีที่เก็บผลเสร็จ:** ดาวน์โหลดไฟล์ผลลัพธ์ JSON/Markdown กลับมาที่โฟลเดอร์ `labs/` บนเครื่องส่วนตัว แล้วสั่งทำลายอินสแตนซ์พร้อมตรวจสอบหน้า Billing ว่าไม่มี EC2, EBS หรือ EIP ค้างอยู่
 
 ---
 
@@ -600,7 +670,7 @@ curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/inst
 
 เราได้เตรียมไฟล์ `Makefile` ไว้ที่รากของโปรเจกต์เพื่อทำหน้าที่ตรวจสอบความพร้อมของฮาร์ดแวร์ (CPU, RAM, พื้นที่ว่างในดิสก์), โฟลเดอร์แคชสำหรับโมเดล (`/tmp/ai-infra-hf-cache`), และเครื่องมือที่จำเป็นทั้งหมด
 
-ให้รันคำสั่งต่อไปนี้จากโฟลเดอร์รากของโปรเจกต์ (`ai-infra-handbook/`):
+ให้รันคำสั่งต่อไปนี้จากโฟลเดอร์รากของโปรเจกต์ (`ai-infra-handbook/`) หากยังไม่ได้ติดตั้ง GNU `make` สามารถใช้ `python3 scripts/make` แทนได้ทันที:
 
 ```bash
 # จากโฟลเดอร์ ai-infra-handbook/
@@ -609,6 +679,9 @@ make init-cache
 
 # 2. รันสคริปต์ตรวจสอบความพร้อมของเครื่องและเครื่องมือ
 make check-env
+
+# (หรือใช้ตัวรันพกพาบนเครื่องที่ยังไม่มี GNU make)
+python3 scripts/make verify-static
 ```
 
 ### 5.1 เกณฑ์ผ่านของบทที่ 0 (Pass Criteria ก่อนเริ่มบทที่ 1)
@@ -922,29 +995,34 @@ docker rm -f ai-inference-test
 }
 ```
 
-#### ขั้นตอนที่ 4: ตรวจสอบและรันโค้ด OpenTofu (`infra/`)
-ในโฟลเดอร์ [`labs/m1-foundations/infra/`](../labs/m1-foundations/infra/) เราออกแบบโค้ด Infrastructure as Code ที่ยึดค่าตัวแปรกลางจาก `SPEC_AND_STYLE_GUIDE.md` ทุกประการ (`cluster_name = "ai-platform-local"`, `k8s_namespace = "ai-platform"`, `host_hf_cache_path = "/tmp/ai-infra-hf-cache"`, `model_cache_pvc_name = "hf-model-cache-pvc"`):
+#### ขั้นตอนที่ 4: ตรวจสอบและรันโค้ด OpenTofu แบบ 2 ขั้น (`infra/` → `infra/k8s-bootstrap/`)
+ในโฟลเดอร์ [`labs/m1-foundations/infra/`](../labs/m1-foundations/infra/) เราออกแบบโค้ด Infrastructure as Code ที่ยึดค่าตัวแปรกลางจาก `SPEC_AND_STYLE_GUIDE.md` ทุกประการ และแยกออกเป็น 2 Stage เพื่อไม่ให้ `provider "kubernetes"` พึ่งพา output ของ `kind_cluster` ภายใน root เดียวกัน (ทำให้ `tofu plan` / `tofu apply` ทำงานได้สะอาดตั้งแต่รอบแรก):
 
 ```bash
 # (จากรากโปรเจกต์ ai-infra-handbook/)
+# Stage 1: สร้างคลัสเตอร์ Kind 3 โหนด (`ai-platform-local`) พร้อม extraMounts /cache/huggingface
 cd labs/m1-foundations/infra
-
-# 1. ตรวจสอบรูปแบบและโครงสร้างโค้ด OpenTofu (ใช้ kubeadm_config_patches ติด Label ให้ Kind Workers)
 tofu fmt -check
 tofu init -backend=false
 tofu validate
-
-# 2. ดูแผนการสร้างทรัพยากร (Declarative Plan)
 tofu plan -var="enable_cloud_gpu_node=false"
+
+# Stage 2: หลังสั่ง tofu apply สร้าง Kind เสร็จแล้ว (ระบบจะสร้าง ./ai-platform-local-config ให้อัตโนมัติ)
+# ให้สร้าง Namespaces และ hf-model-cache-pvc (หรือส่ง -var="kubeconfig_path=~/.kube/config" หากใช้ kind export kubeconfig)
+cd k8s-bootstrap
+tofu fmt -check
+tofu init -backend=false
+tofu validate
+# tofu apply -var="kubeconfig_path=../ai-platform-local-config"
 ```
 
 ---
 
-### 4.3 เส้นทางที่ 2: `Cloud L4 GPU Path (~$0.50 — ทางเลือกเสริมสำหรับทดสอบ Cost Guardrail IaC)`
-ในไฟล์ `labs/m1-foundations/infra/variables.tf` และ `main.tf` เราได้ใส่ตัวแปร `enable_cloud_gpu_node`, `cloud_gpu_instance_type` (ค่าเริ่มต้น `NVIDIA-L4-24GB`) พร้อมกฎ Validation และบล็อก `check "cloud_gpu_cost_guardrail"` ที่บังคับว่า `auto_terminate_minutes <= 180` (และเผยค่าผ่าน Output `cloud_gpu_profile`) ส่วนการสร้าง GPU VM หรือ Pod จริงจะทำผ่านสคริปต์/คำสั่ง Cloud ในบทที่ 2 (Path B) และบทที่ 3:
+### 4.3 เส้นทางที่ 2: `Cloud L4 GPU Path (Policy Guardrail + AWS Optional Track)`
+ในไฟล์ `labs/m1-foundations/infra/variables.tf` และ `main.tf` เราได้ใส่ Policy Guardrail `check "cloud_gpu_cost_guardrail"` ที่บังคับว่า `auto_terminate_minutes <= 180` ส่วนการสร้างอินสแตนซ์ GPU จริงบนคลาวด์ด้วย OpenTofu (`g6.xlarge` Spot + S3 Model Cache + Dead-Man's Switch) อยู่ในโมดูล [`labs/optional-cloud-aws/`](../labs/optional-cloud-aws/README.md) (หรือเลือกใช้ GPU VM/Pod ในบทที่ 2 และ 3):
 
 ```bash
-# ทดสอบตรวจสอบ Guardrail & Plan Profile สำหรับโหมด Cloud GPU L4
+# ทดสอบตรวจสอบ Policy Guardrail สำหรับโปรไฟล์ Cloud GPU L4 ใน Stage 1
 tofu plan \
   -var="enable_cloud_gpu_node=true" \
   -var="cloud_gpu_instance_type=NVIDIA-L4-24GB" \
@@ -1136,8 +1214,8 @@ tofu destroy -auto-approve
 - `tests/test_main.py` — ชุดทดสอบ `pytest` 8 กรณีทดสอบ (รวมการตรวจ default `/cache/huggingface`, concurrent `/readyz`, HTTP `TestClient` เมื่อติดตั้ง FastAPI, และ HTTP 429 load shedding)
 - `Dockerfile` — Multi-stage build ด้วย `uv` + Non-root user (`UID 10001`) + `HF_HOME=/cache/huggingface` + `VLLM_CACHE_ROOT=/tmp/vllm-cache` (อิมเมจ `ai-inference-service:1.0.0`)
 - `Dockerfile.baseline` — ไฟล์เปรียบเทียบสำหรับโจทย์ Optimization (ยกเว้นใน `Trivy` `skip-files` ของ CI อย่างชัดเจน)
-- `infra/versions.tf`, `infra/variables.tf`, `infra/main.tf`, `infra/outputs.tf` — โค้ด OpenTofu สำหรับคลัสเตอร์ `ai-platform-local` และ Namespace `ai-platform`
-- `.github/workflows/ci.yml` — สายพาน CI อัตโนมัติ (`pytest`, Docker build, `Trivy`, `OpenTofu`)
+- `infra/` และ `infra/k8s-bootstrap/` — โค้ด OpenTofu แบบ 2-Stage สำหรับคลัสเตอร์ `ai-platform-local`, Namespaces (`ai-platform`, `monitoring`, `gpu-operator`) และ `hf-model-cache-pvc`
+- `.github/workflows/ci.yml` (ที่ root ของ Repository และใน `labs/m1-foundations/`) — สายพาน CI อัตโนมัติ (`pytest`, Docker build, `Trivy`, `OpenTofu`)
 - `docs/adr-001-container-and-model-cache-strategy.md` — เอกสาร ADR-001
 - `verify_m1.sh` — สคริปต์ตรวจสอบความถูกต้องของ Module 1 (`VERIFY_MODE=static|cluster`)
 
@@ -1168,6 +1246,7 @@ VERIFY_MODE=cluster bash labs/m1-foundations/verify_m1.sh
 3. **[แหล่งเสริม]** **Trivy Official Docs & GitHub Actions Documentation**  
    - URL: https://trivy.dev/docs/ และ https://docs.github.com/en/actions  
    - ส่วนที่ควรอ่าน: *Trivy Container Image & Misconfiguration Scanning* (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025 — บท OS/Docker/GPU Environment Tuning)* และ **Production Kubernetes** *(Josh Rosso et al., O'Reilly — บท Container Security & Resource Management)*
 
 ---
 
@@ -1362,6 +1441,13 @@ $$\text{Theoretical Min ITL (Batch=1)} \approx \frac{M_{\text{weights}}}{\text{M
 
 ---
 
+### 3.4 ยุคใหม่ของการจัดสรร GPU: NVIDIA Device Plugin vs Kubernetes DRA (Dynamic Resource Allocation)
+ใน Kubernetes รุ่นใหม่ (v1.31–v1.34+ GA) **Dynamic Resource Allocation (`resource.k8s.io`)** กำลังเข้ามาแก้ข้อจำกัดของ `nvidia-device-plugin` แบบดั้งเดิม:
+- **ข้อจำกัดของ Extended Resource (`nvidia.com/gpu: 1`):** Kubernetes มองการ์ดจอเป็นเพียงจำนวนเต็ม (Scalar integer) ทำให้ไม่สามารถระบุสเปกเฉพาะ (เช่น ขอเฉพาะการ์ดที่มี VRAM ≥ 24GB, มี NVLink หรือต้องการ MIG profile แบบไดนามิก) และทำ Time-Slicing/MPS ข้ามหลาย Pod ได้อย่างยืดหยุ่นน้อยกว่า
+- **แนวคิดของ DRA (`DeviceClass`, `ResourceClaim`, `ResourceClaimTemplate`):** แยกการประกาศอุปกรณ์ผ่าน **CEL Filter** ออกจาก Pod Spec และเปิดให้ Container หลายตัวหรือหลาย Pod แชร์ `ResourceClaim` เดียวกันได้อย่างปลอดภัย พร้อมกำหนดค่าไดรเวอร์/CUDA MPS ผ่าน Driver Parameters — ในแล็บหลักของเรายังคงใช้ `nvidia-device-plugin` (`Time-Slicing`) และ `fake-gpu-operator` เพื่อความเสถียรบน `kind` และ `k3s` แต่ควรรู้สถาปัตยกรรม DRA ไว้สำหรับการออกแบบคลัสเตอร์ระดับ Production ยุคใหม่ครับ
+
+---
+
 ## 4. ปฏิบัติการ Hands-On Lab แบบ Step-by-Step (Module 2 Lab)
 
 ### 4.1 โจทย์ธุรกิจและข้อจำกัด (Business Scenario & Constraints)
@@ -1478,8 +1564,8 @@ helm upgrade --install vllm-primary labs/m2-k8s-gpu/charts/ai-inference-service 
   -f labs/m2-k8s-gpu/charts/ai-inference-service/values-cloud-gpu.yaml
 ```
 
-**การป้องกันอาการ CUDA Graph OOM เมื่อรัน 4 พอดบนการ์ด L4 ใบเดียวกัน:**
-ในการรัน `vLLM` จำนวน 4 พอดบนการ์ดจอ L4 24GB ใบเดียวด้วย Time-Slicing ในไฟล์ `charts/ai-inference-service/values.yaml` เราได้กำหนดอาร์กิวเมนต์บังคับไว้ดังนี้:
+**การป้องกันอาการ CUDA Graph OOM เมื่อรัน 4 พอดบนการ์ด L4 ใบเดียวกัน (และโปรไฟล์ Local RTX 4050 6GB):**
+ในการรัน `vLLM` จำนวน 4 พอดบนการ์ดจอ L4 24GB ใบเดียวด้วย Time-Slicing ในไฟล์ `charts/ai-inference-service/values-cloud-gpu.yaml` เราได้กำหนดอาร์กิวเมนต์บังคับไว้ดังนี้ (และสำหรับเครื่อง Local ที่มี GPU 6GB อย่าง HP Victus RTX 4050 เรามีไฟล์ [`values-local-rtx4050.yaml`](../labs/m2-k8s-gpu/charts/ai-inference-service/values-local-rtx4050.yaml) ที่รัน `Qwen/Qwen2.5-3B-Instruct-AWQ` + `--kv-cache-dtype=fp8` + `--enforce-eager` พร้อมรองรับ `model.revision` เพื่อ Pin Commit SHA ใน Production):
 ```yaml
 model:
   id: "Qwen/Qwen2.5-0.5B-Instruct"
@@ -1651,7 +1737,7 @@ vllmArgs:
 - `vram_calculator.py` — เครื่องคำนวณ GPU VRAM Sizing (GQA KV-Cache, Quantization, Concurrency Solver)
 - `test_vram_calculator.py` — ชุดทดสอบ `pytest` ตรวจสอบความถูกต้องของสูตรคำนวณทุกกรณี
 - `gpu-time-slicing-config.yaml` — ConfigMap มาตรฐานของ NVIDIA Device Plugin (`replicas: 4`)
-- `charts/ai-inference-service/` — Production Helm Chart (`Chart.yaml`, `values.yaml`, `values-cloud-gpu.yaml`, `values-cloud-gpu-7b-awq.yaml`, `templates/deployment.yaml`, `templates/service.yaml`, `templates/pvc.yaml`, `templates/priorityclass.yaml`, `templates/pdb.yaml`)
+- `charts/ai-inference-service/` — Production Helm Chart (`Chart.yaml`, `values.yaml`, `values-cloud-gpu.yaml`, `values-cloud-gpu-7b-awq.yaml`, `values-local-rtx4050.yaml`, `templates/deployment.yaml`, `templates/service.yaml`, `templates/pvc.yaml`, `templates/priorityclass.yaml`, `templates/pdb.yaml`)
 - `docs/adr-002-gpu-sharing-and-scheduling.md` — เอกสาร ADR-002
 - `verify_m2.sh` — สคริปต์ตรวจสอบความถูกต้องของ Module 2 (`VERIFY_MODE=static|cluster`) และ **Milestone Gate 1**
 
@@ -1674,8 +1760,9 @@ bash labs/m2-k8s-gpu/verify_m2.sh
 2. **[แหล่งเสริม 1]** **Kubernetes Official Documentation (Probes, Scheduling & GPUs)**  
    - URL: https://kubernetes.io/docs/home/  
    - ส่วนที่ควรอ่าน: *Configure Liveness, Readiness and Startup Probes*, *Taints and Tolerations*, *Pod Priority and Preemption* (ใช้เวลาอ่าน ~3 ชั่วโมง | ฟรี)
-3. **[แหล่งเสริม 2]** **Helm Docs, Kubernetes `kind` Docs & Run:ai `fake-gpu-operator`**  
-   - URL: https://helm.sh/docs/ , https://kind.sigs.k8s.io/docs/ และ https://github.com/run-ai/fake-gpu-operator (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+3. **[แหล่งเสริม 2]** **Helm Docs, Kubernetes `kind` Docs, Kubernetes DRA Docs & Run:ai `fake-gpu-operator`**  
+   - URL: https://helm.sh/docs/ , https://kind.sigs.k8s.io/docs/ , https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/ และ https://github.com/run-ai/fake-gpu-operator (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **Production Kubernetes** *(Josh Rosso et al., O'Reilly)* และ **The Ultra-Scale Playbook** *(Hugging Face, 2025 — บท GPU Memory & Compute Math)*
 
 ---
 
@@ -1955,6 +2042,15 @@ $$u_{\text{break-even}} = \frac{C_{\text{hour}} \times 1,000,000}{T_{\text{peak}
 
 ---
 
+### 3.5 สถาปัตยกรรม Inference ยุค 2026: Native FP8, Disaggregated PD, Multi-GPU TP/MoE & Agentic Serving
+เมื่อก้าวข้ามระดับ Single-GPU 7B ไปสู่ระบบ Production ขนาดใหญ่ตามแนวทางใน *AI Systems Performance Engineering* (Chris Fregly) และ *How to Scale Your Model* (Google DeepMind) มี 4 แนวคิดที่วิศวกร AI Platform ต้องเชี่ยวชาญ:
+1. **Native FP8 (Weights + KV-Cache) บน Ada Lovelace / Hopper:** การ์ด NVIDIA L4 และ RTX 4050 (Ada Lovelace) มี FP8 Tensor Cores ในตัว การรัน `--quantization fp8 --kv-cache-dtype fp8` ลดขนาด KV-Cache ต่อโทเคนลงอีก **50%** (จาก `56 KiB` เหลือ `28 KiB/token` สำหรับ Qwen2.5-7B) และช่วยรักษาความแม่นยำภาษาไทยและ JSON ได้ดีกว่า INT4 เมื่อเทียบกับ BF16
+2. **Disaggregated Prefill–Decode (PD) (`llm-d`, NVIDIA Dynamo, LMCache):** ในเวิร์กโหลดที่มี Prompt ยาว (8k–64k tokens) การประมวลผล Prefill จะกิน Compute นานและดึง **ITL** ของผู้ใช้อื่นที่กำลัง Decode อยู่ใน Batch เดียวกันให้กระตุก (**Prefill Interference**) วิธีแก้ระดับ Scale ใหญ่คือแยกพูลของพอด **Prefill Workers** ออกจาก **Decode Workers** แล้วส่งต่อ KV-Cache ผ่าน RDMA/NIXL หรือ LMCache
+3. **Multi-GPU Tensor Parallelism (TP) & Mixture-of-Experts (MoE):** สำหรับโมเดล 70B+ หรือ MoE (เช่น DeepSeek / Qwen-MoE) ที่เกิน 1 การ์ด เราแบ่งเลเยอร์ตามแนวกว้างด้วย `--tensor-parallel-size N` (ต้องการ NVLink เพราะทุก Decode step ต้องทำ `AllReduce`) หรือแยก Expert Parallelism (EP) เมื่อมีโหนดหลายเครื่อง
+4. **Agentic / Reasoning Serving & Quantization Eval Gate:** โมเดลยุค Reasoning / Tool-Calling สร้าง Output ยาวกว่าปกติ 5–10 เท่า ทำให้ Decode Memory Bandwidth และ KV-Cache Capacity กลายเป็นคอขวดหลัก และการเปลี่ยน Quantization ทุกครั้งต้องผ่าน **Eval Gate** ([`eval_thai_quality.py`](../labs/m3-vllm/eval_thai_quality.py)) ตามแนวทาง *AI Engineering* (Chip Huyen) เพื่อยืนยันว่าภาษาไทยและ Structured JSON ไม่เพี้ยน
+
+---
+
 ## 4. Hands-on Lab (Dual-Path Execution)
 
 แล็บในบทที่ 3 ออกแบบให้ทำงานเชื่อมต่อกับโครงสร้างแคช `HF_HOME=/cache/huggingface` (บนโฮสต์คือ `/tmp/ai-infra-hf-cache`) และพอร์ต `8000` ของ `vllm-primary-svc` ที่วางรากฐานไว้ในบทที่ 1 และ 2 โดยโค้ดทั้งหมดของแล็บนี้อยู่ในโฟลเดอร์ `labs/m3-vllm/`
@@ -2047,6 +2143,25 @@ C: AWQ+APC+Tune |   32 |         640.0 |         23.5 |             1450.0 |    
 Break-even Utilization vs Managed API ($0.60 / 1M tokens):
   - Config A (420 tok/s): 93.7% utilization required
   - Config C (1450 tok/s): 27.1% utilization required
+```
+
+---
+
+### Path A2: Local RTX 4050 6GB CUDA Path (\$0 — สำหรับเครื่อง HP Victus / WSL2)
+
+หากเครื่องของคุณมี GPU 6GB VRAM (เช่น NVIDIA RTX 4050 Ada Lovelace บน WSL2) คุณสามารถรัน `vLLM` V1 บน CUDA จริงได้โดยไม่ต้องรอเช่าคลาวด์ เพื่อฝึกจับอาการ BF16 เทียบกับ AWQ + FP8 KV-Cache และรัน Eval Gate ภาษาไทย:
+
+```bash
+# 1. Baseline Local CUDA (Qwen2.5-1.5B BF16, No APC)
+bash labs/m3-vllm/start_vllm_baseline.sh --local-rtx4050 --dry-run
+
+# 2. Optimized Local CUDA (Qwen2.5-3B-Instruct-AWQ + FP8 KV-Cache + APC + Eager)
+bash labs/m3-vllm/start_vllm_optimized.sh --local-rtx4050 --dry-run
+# (ตัด --dry-run ออกเพื่อสตาร์ทจริงบน Docker GPU)
+
+# 3. รัน Quantization Quality Eval Gate ภาษาไทย & JSON
+python3 labs/m3-vllm/eval_thai_quality.py --simulate
+# หรือยิงเข้าเครื่องจริง: python3 labs/m3-vllm/eval_thai_quality.py --live --url http://localhost:8000 --model Qwen/Qwen2.5-3B-Instruct-AWQ
 ```
 
 ---
@@ -2290,6 +2405,17 @@ vllmArgs:
 
 ---
 
+### คำถามข้อที่ 6 (2026 Extension): Disaggregated Prefill–Decode (PD) และการตรวจ Eval Gate หลัง Quantization
+> **"หากบริษัทเริ่มให้บริการ Long-Context RAG (Prompt ยาว 32k tokens) จนทำให้ ITL ของแชตบอตกระตุกแม้ตั้ง `--max-num-batched-tokens` แล้ว และลูกค้าบ่นว่าโมเดล AWQ ตอบภาษาไทยเพี้ยนบางกรณี คุณจะออกแบบสถาปัตยกรรมและกระบวนการตรวจสอบอย่างไร?"**
+
+#### เฉลยแนวทางการตอบระดับ Strong Mid-Level (Model Answer)
+- **แก้ปัญหา Prefill Interference ด้วย Disaggregated Prefill–Decode (PD):**
+  - แยก Cluster Pool ออกเป็น **Prefill Pool** (จูนเพื่อ Compute-bound Throughput และรัน Prompt ยาว) และ **Decode Pool** (จูนเพื่อ Memory-Bandwidth-bound ITL `< 25 ms` โดยไม่ถูกงาน Prefill ใหม่แทรกคิว) แล้วส่งต่อ KV-Cache ระหว่างสอง Pool ผ่าน RDMA/NIXL หรือ Shared KV Store (เช่น `llm-d` + LMCache)
+- **แก้ปัญหาคุณภาพหลังบีบอัดด้วย Quantization Eval Gate:**
+  - ปฏิบัติตามหลักใน *AI Engineering* (Chip Huyen): ห้ามดูแค่ TTFT/TPS แต่ต้องมี Automated Eval Gate วัด JSON Schema Validity และความถูกต้องภาษาไทยก่อน Promote Model Artifact และหาก INT4-AWQ สูญเสียความแม่นยำเกินเกณฑ์ (เช่น > 2%) บนการ์ด Ada/Hopper ให้สลับไปใช้ **Native FP8 (`--quantization fp8 --kv-cache-dtype fp8`)** แทน
+
+---
+
 ## 9. ตรวจสอบความสำเร็จของบทที่ 3 (Verification Command)
 
 ก่อนเข้าสู่บทที่ 4 ให้รันสคริปต์ตรวจสอบความสมบูรณ์ของบทที่ 3 ด้วยคำสั่งต่อไปนี้:
@@ -2299,8 +2425,9 @@ bash labs/m3-vllm/verify_m3.sh
 ```
 
 ### 9.1 รายการไฟล์ส่งมอบใน [`labs/m3-vllm/`](../labs/m3-vllm/) (Deliverables)
-- `start_vllm_baseline.sh` — สคริปต์รัน `vLLM` V1 โหมด Baseline (ปิด APC: `--no-enable-prefix-caching`; รองรับ `--local-cpu` ที่ตั้ง `HF_HOME=/tmp/ai-infra-hf-cache` และ `--cloud-gpu` ที่ตั้ง `HF_HOME=/cache/huggingface`)
-- `start_vllm_optimized.sh` — สคริปต์รัน `vLLM` V1 โหมด Optimized (`awq_marlin`, `--enable-prefix-caching`, `--max-num-batched-tokens 2048`)
+- `start_vllm_baseline.sh` — สคริปต์รัน `vLLM` V1 โหมด Baseline (ปิด APC: `--no-enable-prefix-caching`; รองรับ `--local-cpu`, `--local-rtx4050` และ `--cloud-gpu`)
+- `start_vllm_optimized.sh` — สคริปต์รัน `vLLM` V1 โหมด Optimized (รองรับ `--local-cpu`, `--local-rtx4050`, `--cloud-gpu` AWQ, และ `--cloud-gpu-fp8` FP8 W+KV)
+- `eval_thai_quality.py` — Mini-Lab Quantization Quality Eval Gate สำหรับตรวจภาษาไทยและ Structured JSON (`--simulate` / `--live`)
 - `run_benchmark_suite.sh` — ชุดทดสอบ Benchmark (TTFT p95, ITL p95, TPS, KV-Cache %, Prefix Hit %, และ Unit Economics ต่อ 1M Tokens รองรับ `--backend`)
 - `optimization-report-template.md` — แบบฟอร์มรายงานผลการปรับจูนสำหรับให้ผู้เรียนกรอกผลจริง (พร้อมตัวอย่างเฉลยที่ `examples/optimization-report-sample.md`)
 - `verify_m3.sh` — สคริปต์ตรวจสอบความถูกต้องอัตโนมัติของ Module 3 (`--target examples|workspace`)
@@ -2320,6 +2447,7 @@ bash labs/m3-vllm/verify_m3.sh
 3. **[แหล่งเสริม]** **Anyscale / vLLM Blog — Prefix Caching & Chunked Prefill Tuning**  
    - URL: https://docs.vllm.ai/en/latest/features/automatic_prefix_caching.html  
    - ส่วนที่ควรอ่าน: *How APC Works & Metrics (`prefix_cache_hits_total`)* (ใช้เวลาอ่าน ~1 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ 2025–2026]** **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025)*, **AI Engineering** *(Chip Huyen, O'Reilly 2025 — Eval Gates & Latency/Cost)*, และ **How to Scale Your Model** *(Google DeepMind, 2025 — Roofline & Parallelism Math)*
 
 ---
 
@@ -2327,7 +2455,7 @@ bash labs/m3-vllm/verify_m3.sh
 
 # บทที่ 4: สถาปัตยกรรม AI Gateway, การจัดเส้นทางอัจฉริยะ และการกำกับดูแลระบบหลายผู้เช่า (AI Gateway, Intelligent Routing & Multi-Tenant Governance)
 
-> **Milestone M4 (สัปดาห์ที่ 7–8):** สร้างชั้นควบคุมกลาง (**Centralized AI Gateway Control Plane**) ด้วย **`LiteLLM Proxy`** และ **Kubernetes Gateway API Inference Extension (`InferencePool`, `InferenceModel`, Endpoint Picker - EPP)** เพื่อบังคับใช้โควตา RPM/TPM รายทีม (Virtual Keys), แคชคำตอบด้วย Redis, คัดกรองข้อมูลส่วนบุคคลตามกฎหมาย PDPA (เลขบัตรประชาชนไทย 13 หลักและเบอร์โทรศัพท์) ตามมาตรฐาน OWASP LLM Top 10 (2025), และสลับเส้นทางอัตโนมัติ (Automated Failover) เมื่อเอ็นจินหลักเกิดความหน่วงสูงหรือล่ม
+> **Milestone M4 (สัปดาห์ที่ 7–8):** สร้างชั้นควบคุมกลาง (**Centralized AI Gateway Control Plane**) ด้วย **`LiteLLM Proxy`** และ **Kubernetes Gateway API Inference Extension (`InferencePool` v1, `llm-d` `InferenceObjective`, Endpoint Picker - EPP)** เพื่อบังคับใช้โควตา RPM/TPM รายทีม (Virtual Keys), แคชคำตอบด้วย Redis, คัดกรองข้อมูลส่วนบุคคลตามกฎหมาย PDPA (เลขบัตรประชาชนไทย 13 หลักและเบอร์โทรศัพท์) ตามมาตรฐาน OWASP LLM Top 10 (2025), และสลับเส้นทางอัตโนมัติ (Automated Failover) เมื่อเอ็นจินหลักเกิดความหน่วงสูงหรือล่ม
 
 ---
 
@@ -2358,7 +2486,7 @@ bash labs/m3-vllm/verify_m3.sh
 
 เมื่อจบบทเรียนนี้ คุณจะสามารถ:
 - ออกแบบและติดตั้ง **`LiteLLM Proxy`** ร่วมกับ **PostgreSQL** (เก็บ Virtual Keys และงบประมาณรายทีม) และ **Redis** (เก็บ Distributed Rate Limit Counters และ Exact/Semantic Cache) บน Kubernetes
-- อธิบายสถาปัตยกรรมและกลไกการให้คะแนนของ **Kubernetes Gateway API Inference Extension** (`InferencePool`, `InferenceModel`, และ **Endpoint Picker - EPP**) ที่อ่านเมทริกซ์ `vllm:kv_cache_usage_perc` และ `vllm:num_requests_waiting` เพื่อเลือก Pod ที่เหมาะสมที่สุด
+- อธิบายสถาปัตยกรรมและกลไกการให้คะแนนของ **Kubernetes Gateway API Inference Extension** (`InferencePool` `v1`, **`llm-d` `InferenceObjective`** [เดิมคือ `InferenceModel`], และ **Endpoint Picker - EPP**) ที่อ่านเมทริกซ์ `vllm:kv_cache_usage_perc` และ `vllm:num_requests_waiting` เพื่อเลือก Pod ที่เหมาะสมที่สุด
 - เขียนและทดสอบระบบคัดกรองข้อมูลส่วนบุคคล (**PDPA PII Masking Guardrail**) ที่ตรวจสอบเลขบัตรประชาชนไทย 13 หลัก (พร้อมสมการตรวจสอบ Checksum Modulo-11) และเบอร์โทรศัพท์ไทย
 - สร้างและรัน **`mock_vllm_server`** (เซิร์ฟเวอร์จำลองการสตรีม SSE ที่ใช้ RAM น้อยกว่า `80 MB` ต่อ Pod และส่งออก Prometheus V1 metrics ครบทุกตัว) เพื่อจำลองการทำ Multi-Replica Failover และ Chaos Testing บนเครื่อง Local 16GB RAM ได้โดยไม่เกิด OOM
 - เขียนชุดทดสอบอัตโนมัติ (`tests/test_gateway_resilience.py`) เพื่อพิสูจน์การทำงานของ Rate Limit (`HTTP 429`), PII Redaction (`<THAI_ID_REDACTED>`), Cache Hit, และ Primary-to-Secondary Automated Failover ภายในเวลา `< 3.5 วินาที`
@@ -2391,10 +2519,10 @@ flowchart TB
         Postgres[("PostgreSQL 16 (postgres-svc:5432)\nVirtual Keys & Spend Logs")]
     end
 
-    subgraph K8sInferenceExt["Kubernetes Gateway API Inference Extension"]
-        InfModel["CRD: InferenceModel (qwen2.5-7b, Criticality: Critical)"]
-        InfPool["CRD: InferencePool (vllm-pool)"]
-        EPP["Endpoint Picker (EPP)\nScores: KV-Cache % + Waiting Queue + Prefix Affinity"]
+    subgraph K8sInferenceExt["Kubernetes Gateway API Inference Extension + llm-d"]
+        InfModel["CRD: InferenceObjective (qwen25-7b-realtime, priority: 100)"]
+        InfPool["CRD: InferencePool v1 (vllm-qwen-pool)"]
+        EPP["Endpoint Picker (EPP v1.0.0)\nScores: KV-Cache % + Waiting Queue + Prefix Affinity"]
     end
 
     subgraph ServingBackends["Model Serving Backends (vLLM V1 / mock_vllm_server)"]
@@ -2417,20 +2545,20 @@ flowchart TB
     Router -.->|"Automated Fallback on 5xx / Timeout > 3s"| Secondary
 ```
 
-### 2.2 กลไกการทำงานของ Kubernetes Gateway API Inference Extension (`InferenceModel`, `InferencePool`, และ `EPP`)
+### 2.2 กลไกการทำงานของ Kubernetes Gateway API Inference Extension (`InferencePool` v1, `InferenceObjective`, และ `EPP`)
 
 ทำไม Kubernetes `Service` มาตรฐานถึงไม่เพียงพอสำหรับเวิร์กโหลด LLM?
 ในเว็บแอปพลิเคชันทั่วไป คำขอ HTTP แต่ละรายการใช้เวลาประมวลผลใกล้เคียงกัน (เช่น 10–50 ms) และใช้หน่วยความจำน้อยมาก แต่ในระบบเสิร์ฟ LLM:
 - คำขอที่ 1 อาจเป็นคำถามสั้นๆ 20 โทเคน ใช้เวลา 150 ms
 - คำขอที่ 2 อาจแนบเอกสารสัญญา 4,000 โทเคนและสั่งเขียนโค้ดยาว 1,000 โทเคน ใช้เวลา 18 วินาทีและกินพื้นที่ KV-Cache บนการ์ดจอไปกว่า 280 MB
 
-โครงการมาตรฐานของชุมชน Kubernetes ชื่อ **Gateway API Inference Extension** จึงได้เพิ่ม Custom Resource Definitions (CRDs) 2 ตัว และคอมโพเนนต์การจัดเส้นทางอัจฉริยะ 1 ตัว:
+โครงการมาตรฐานของชุมชน Kubernetes ชื่อ **Gateway API Inference Extension (`v1`)** และโปรเจกต์ **`llm-d`** จึงแยกหน้าที่ผ่าน Custom Resource Definitions (CRDs) 2 ตัว และคอมโพเนนต์การจัดเส้นทางอัจฉริยะ 1 ตัว:
 
-1. **`InferenceModel` (เจ้าของแอปพลิเคชันเป็นผู้กำหนด):**
-   - แมปชื่อโมเดลที่ผู้ใช้เรียก (เช่น `qwen2.5-7b`) เข้ากับระดับความสำคัญทางธุรกิจ (**`criticality`**):
-     - `Critical` (หรือ `Sheddable: false`): สำหรับทราฟฟิก `realtime-team` ที่ต้องได้รับบริการเสมอ
-     - `Sheddable` (หรือ `Standard`): สำหรับทราฟฟิก `batch-team` ซึ่งหากคลัสเตอร์มีค่า `vllm:kv_cache_usage_perc` ทะลุเกณฑ์วิกฤต (เช่น `> 85%`) ตัว EPP จะปฏิเสธคำขอระดับ `Sheddable` ทันที (Load Shedding) เพื่อสงวนพื้นที่ KV-Cache ไว้ให้คำขอระดับ `Critical`!
-2. **`InferencePool` (ทีมแพลตฟอร์มเป็นผู้กำหนด):**
+1. **`InferenceObjective` (`llm-d.ai/v1`, พัฒนาต่อจาก `InferenceModel` `v1alpha2` เดิม):**
+   - ผูกนโยบายลำดับความสำคัญของเวิร์กโหลดเข้ากับ `poolRefs` โดยใช้ค่า **`priority`** แบบมีเครื่องหมาย (Signed Priority):
+     - **`priority: 100` (บวก = Critical):** สำหรับทราฟฟิก `realtime-team` ที่ต้องได้รับบริการเสมอ
+     - **`priority: -10` (ลบ = Sheddable):** สำหรับทราฟฟิก `batch-team` ซึ่งหากคลัสเตอร์มีค่า `vllm:kv_cache_usage_perc` ทะลุเกณฑ์วิกฤต (เช่น `> 85%`) ตัว EPP จะปฏิเสธคำขอระดับ Sheddable ทันที (Load Shedding) เพื่อสงวนพื้นที่ KV-Cache ไว้ให้คำขอระดับ Critical!
+2. **`InferencePool` (`inference.networking.k8s.io/v1` — ทีมแพลตฟอร์มเป็นผู้กำหนด):**
    - จัดกลุ่ม Pod ของ `vLLM` ที่เสิร์ฟโมเดลพื้นฐานตัวเดียวกันเข้าด้วยกัน และผูกเข้ากับบริการ **Endpoint Picker (EPP)**
 3. **Endpoint Picker (`EPP` — ExtProc Filter):**
    - ทำงานเป็น External Processing (`ext_proc`) ร่วมกับ Envoy / Gateway โดยคอยดึงค่า Prometheus metrics จากทุก Pod ใน `InferencePool` ทุกๆ 50–200 มิลลิวินาที ได้แก่:
@@ -2540,8 +2668,11 @@ labs/m4-gateway/
 │   └── Dockerfile                                  # Multi-stage Docker build ด้วย uv (UID 10001, HF_HOME=/cache/huggingface)
 ├── litellm_config.yaml                             # ไฟล์ตั้งค่า LiteLLM Proxy (qwen2.5-7b, qwen2.5-7b-batch, num_retries: 0, Redis Cache, PDPA)
 ├── k8s/
-│   ├── gateway-stack.yaml                          # K8s Manifests (Mock vLLM, LiteLLM+ConfigMap+InitJob, Redis, Postgres+PVC, EPP+RBAC, CRDs)
-│   └── gateway-api-route.yaml                      # Optional Overlay: Gateway + HTTPRoute (ชี้เข้า InferencePool) + ServiceMonitor
+│   ├── gateway-stack.yaml                          # Core K8s Stack 14 Docs (Mock vLLM, LiteLLM+ConfigMap+InitJob, Redis, Postgres+PVC/Probe)
+│   ├── inference-extension-v1.yaml                 # GAIE v1 & llm-d CRDs 8 Docs (EPP v1.0.0 + RBAC, InferencePool v1, InferenceObjective)
+│   ├── network-policies.yaml                       # Zero-Trust NetworkPolicies (กั้น Traffic ตรงเข้า vLLM/Redis/Postgres)
+│   ├── litellm-ha-patch.yaml                       # Optional HA Patch (LiteLLM 2 replicas + PDB สำหรับ 32GB/Prod)
+│   └── gateway-api-route.yaml                      # Optional Overlay: Gateway + HTTPRoute (inference.networking.k8s.io) + ServiceMonitor (release: monitoring)
 ├── tests/
 │   └── test_gateway_resilience.py                  # ชุดทดสอบอัตโนมัติ (Rate Limit 429, Thai ID/Phone/Multimodal Redaction, Cache Hit, Failover)
 ├── docs/
@@ -2603,11 +2734,9 @@ labs/m4-gateway/tests/test_gateway_resilience.py::test_tenant_rate_limiting_http
 
 #### ขั้นตอนที่ 3: ดีพลอย Gateway Stack ลงบนคลัสเตอร์ Kubernetes (`kind`)
 
-หากคลัสเตอร์ `ai-platform-local` รันอยู่ ให้ทำตามลำดับดังนี้:
-1. ติดตั้ง CRDs ของ **Gateway API Inference Extension** (`v0.3.0`) ก่อน (เพื่อให้ Apply `InferencePool` และ `InferenceModel` ผ่าน):
-   `kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v0.3.0/manifests.yaml`
-2. สร้างและโหลดอิมเมจ `mock-vllm-server:1.0.0` (รันแบบ Non-root UID `10001`, `HF_HOME=/cache/huggingface`, `readOnlyRootFilesystem: true`) โดยระบุ **Build Context เป็น `labs/m4-gateway`**
-3. สร้าง Kubernetes `Secret` `litellm-secrets` จาก `.env.example` (ไม่เก็บ Password/Master Key จริงไว้ใน Git) แล้วจึง Apply Stack ทั้งหมด (ซึ่งรวม Postgres PVC, Readines Probe, Job `litellm-init-virtual-keys` สำหรับ Seed Virtual Keys, และ `ServiceAccount`/`Role`/`RoleBinding` ของ EPP) พร้อมแนบ `k8s/gateway-api-route.yaml` หากคลัสเตอร์มี Envoy Gateway / kgateway:
+หากคลัสเตอร์ `ai-platform-local` รันอยู่ ให้ทำตามลำดับดังนี้ (แยก Core Stack ออกจาก CRD Manifests เพื่อไม่ให้พังหากยังไม่ได้ลง CRDs):
+1. สร้างและโหลดอิมเมจ `mock-vllm-server:1.0.0` (Non-root UID `10001`, `HF_HOME=/cache/huggingface`, `readOnlyRootFilesystem: true`) และสร้าง Secret `litellm-secrets` แล้ว Apply Core Stack (`k8s/gateway-stack.yaml`) + Zero-Trust `k8s/network-policies.yaml` (+ `k8s/litellm-ha-patch.yaml` สำหรับเครื่อง 32GB RAM)
+2. ติดตั้ง CRDs ของ **Gateway API Inference Extension (`v1.0.0`)** และ **`llm-d` `InferenceObjective`** แล้วจึง Apply `k8s/inference-extension-v1.yaml` (อัปเกรดจาก `InferenceModel` `v1alpha2` เดิมเป็น `InferencePool v1` + `InferenceObjective`) และ `k8s/gateway-api-route.yaml` (ใช้ `release: monitoring`)
 
 ```bash
 docker build -t mock-vllm-server:1.0.0 -f labs/m4-gateway/mock_vllm_server/Dockerfile labs/m4-gateway
@@ -2618,10 +2747,18 @@ cp labs/m4-gateway/.env.example labs/m4-gateway/.env
 kubectl create namespace ai-platform --dry-run=client -o yaml | kubectl apply -f -
 kubectl create secret generic litellm-secrets -n ai-platform --from-env-file=labs/m4-gateway/.env
 
+# 1. Core Stack + Zero-Trust NetworkPolicies (ไม่พึ่ง CRDs)
 kubectl apply -f labs/m4-gateway/k8s/gateway-stack.yaml
-# (ตัวเลือกเพิ่มเติมเมื่อติดตั้ง Gateway API Controller แล้ว)
+kubectl apply -f labs/m4-gateway/k8s/network-policies.yaml
+# (ทางเลือก HA สำหรับเครื่อง 32GB RAM):
+# kubectl scale deployment/litellm-gateway -n ai-platform --replicas=2
+# kubectl apply -f labs/m4-gateway/k8s/litellm-ha-patch.yaml
+
+# 2. GAIE v1 + llm-d CRDs & Endpoint Picker
+# kubectl apply -f https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases/download/v1.0.0/manifests.yaml
+# kubectl apply -f labs/m4-gateway/k8s/inference-extension-v1.yaml
 # kubectl apply -f labs/m4-gateway/k8s/gateway-api-route.yaml
-kubectl get pods,svc,jobs -n ai-platform
+kubectl get pods,svc,jobs,networkpolicy -n ai-platform
 ```
 
 ---
@@ -2631,7 +2768,7 @@ kubectl get pods,svc,jobs -n ai-platform
 เมื่อรันบนคลัสเตอร์ที่มีโหนด GPU:
 1. ให้ `vllm-primary-svc:8000` ชี้ไปยัง Deployment ของ `vLLM` จริงที่รัน `Qwen/Qwen2.5-7B-Instruct-AWQ` จากบทที่ 3
 2. ให้ `vllm-secondary-svc:8000` ชี้ไปยังเรพลิกาสำรอง (หรือใช้ `mock_vllm_server` / Managed API Endpoint เป็น Fallback ปลายทาง)
-3. ติดตั้งคอนโทรลเลอร์ของ **Gateway API Inference Extension** (`v0.3.0+`) เพื่อให้ `EndpointPicker` อ่านค่า `vllm:kv_cache_usage_perc` และ `vllm:num_requests_waiting` จริงจากพอร์ต `8000/metrics` ของแต่ละ Pod
+3. ติดตั้งคอนโทรลเลอร์ของ **Gateway API Inference Extension** (`v1.0.0`) และ **`llm-d` `InferenceObjective`** เพื่อให้ `EndpointPicker` อ่านค่า `vllm:kv_cache_usage_perc` และ `vllm:num_requests_waiting` จริงจากพอร์ต `8000/metrics` ของแต่ละ Pod
 
 ---
 
@@ -2746,16 +2883,16 @@ curl -X POST http://localhost:8000/admin/chaos \
 ---
 
 ### คำถามข้อที่ 1: ทำไม Round-Robin / Least-Connections ถึงล้มเหลวกับ LLM และการแก้ปัญหาด้วย Kubernetes Gateway API Inference Extension (`EPP`)
-> **"ทำไมการกระจายโหลดด้วย Kubernetes Service (Round-Robin) หรือ NGINX (Least-Connections) จึงมักทำให้ค่า p99 Latency ของคลัสเตอร์ `vLLM` พุ่งสูงผิดปกติ? และสถาปัตยกรรม Kubernetes Gateway API Inference Extension (`InferencePool`, `InferenceModel`, `Endpoint Picker`) แก้ปัญหานี้อย่างไร?"**
+> **"ทำไมการกระจายโหลดด้วย Kubernetes Service (Round-Robin) หรือ NGINX (Least-Connections) จึงมักทำให้ค่า p99 Latency ของคลัสเตอร์ `vLLM` พุ่งสูงผิดปกติ? และสถาปัตยกรรม Kubernetes Gateway API Inference Extension (`InferencePool` v1, `llm-d` `InferenceObjective`, `Endpoint Picker`) แก้ปัญหานี้อย่างไร?"**
 
 #### เฉลยแนวทางการตอบระดับ Strong Mid-Level (Model Answer)
 - **ทำไม Round-Robin และ Least-Connections ถึงล้มเหลวกับ LLM:**
   1. **ความไม่สมมาตรของต้นทุนต่อคำขอ (Request Cost Asymmetry):** คำขอ HTTP 1 รายการที่มีความยาว 100 โทเคน กับอีกคำขอที่มีความยาว 4,000 โทเคน นับเป็น "1 Active Connection" เท่ากันในมุมมองของ Least-Connections แต่ใช้พื้นที่ KV-Cache และเวลา GPU ต่างกันถึง 40 เท่า
   2. **การไม่รับรู้สถานะหน่วยความจำและแคช (KV-Cache & Prefix-Cache Blindness):** Round-Robin อาจส่งคำขอใหม่ไปยัง Pod ที่ `vllm:kv_cache_usage_perc` พุ่งถึง 98% จนเกิด Preemption Thrashing หรือส่งคำขอที่มี System Prompt ชุดเดียวกันกระจายไปคนละ Pod จนเสียโอกาสทำ Prefix Cache Hit
-- **กลไกของ Gateway API Inference Extension:**
-  - แยกนิยามระดับธุรกิจไว้ที่ **`InferenceModel`** (ระบุชื่อโมเดลและระดับความสำคัญ `Critical` vs `Sheddable`) และนิยามกลุ่มเซิร์ฟเวอร์ไว้ที่ **`InferencePool`**
+- **กลไกของ Gateway API Inference Extension (`v1`) + `llm-d`:**
+  - แยกนิยามกลุ่มเซิร์ฟเวอร์ไว้ที่ **`InferencePool` (`inference.networking.k8s.io/v1`)** และกำหนดนโยบายระดับความสำคัญไว้ที่ **`InferenceObjective` (`llm-d.ai/v1`, เดิมคือ `InferenceModel`)** ผ่านค่า `priority` แบบมีเครื่องหมาย (`+100` สำหรับ Critical vs `-10` สำหรับ Sheddable)
   - ใช้คอมโพเนนต์ **Endpoint Picker (EPP)** ซึ่งเชื่อมต่อกับ Envoy Gateway ผ่านโปรโตคอล `ext_proc` โดย EPP จะดึงเมทริกซ์จริงจาก `vLLM` ได้แก่ `vllm:kv_cache_usage_perc`, `vllm:num_requests_waiting`, และสถานะบล็อกของ Prefix Cache
-  - เมื่อมีคำขอเข้ามา EPP จะคำนวณคะแนนรวมเพื่อเลือก Pod ที่มี Prefix Cache ตรงกันมากที่สุด **และ** มีคิวรอรวมถึงการใช้ KV-Cache ต่ำที่สุด พร้อมทั้งทำ **Priority-based Load Shedding** (ปฏิเสธคำขอระดับ `Sheddable` ของงาน Batch เมื่อ KV-Cache ทั้งพูลเกินเกณฑ์วิกฤต เพื่อปกป้องทราฟฟิก `Critical`)
+  - เมื่อมีคำขอเข้ามา EPP จะคำนวณคะแนนรวมเพื่อเลือก Pod ที่มี Prefix Cache ตรงกันมากที่สุด **และ** มีคิวรอรวมถึงการใช้ KV-Cache ต่ำที่สุด พร้อมทั้งทำ **Priority-based Load Shedding** (ปฏิเสธคำขอระดับ Sheddable ของงาน Batch ที่มีค่า `priority` ติดลบเมื่อ KV-Cache ทั้งพูลเกินเกณฑ์วิกฤต เพื่อปกป้องทราฟฟิก Critical)
 
 ---
 
@@ -2816,7 +2953,7 @@ VERIFY_MODE=cluster bash labs/m4-gateway/verify_m4.sh
 - `.env.example` — เทมเพลตสร้าง `Secret litellm-secrets` นอก Git (รวม `LITELLM_MASTER_KEY`, `LITELLM_SALT_KEY`, `DATABASE_URL`)
 - `mock_vllm_server/app.py`, `mock_vllm_server/pdpa_guardrail.py`, `mock_vllm_server/Dockerfile` — Backend จำลอง `mock-vllm-server:1.0.0` + โมดูล PDPA Single Source of Truth
 - `litellm_config.yaml` — คอนฟิก `LiteLLM Proxy` พร้อม Virtual Keys, `qwen2.5-7b-batch`, `num_retries: 0`, Redis Cache, PDPA Callback (`pdpa_guardrail.proxy_handler_instance`), `require_auth_for_metrics_endpoint: false`, และ Fallback Routing
-- `k8s/gateway-stack.yaml`, `k8s/gateway-api-route.yaml` — Manifests ครบชุด (`vllm-primary`, `vllm-secondary` แยก Pool Label, `litellm-gateway`, Init Job `litellm-init-virtual-keys`, `vllm-qwen-epp` พร้อม RBAC, `redis`, `postgres` + PVC/Probe, `ConfigMap`, `InferencePool`/`InferenceModel`, `Gateway`/`HTTPRoute`/`ServiceMonitor`)
+- `k8s/gateway-stack.yaml`, `k8s/inference-extension-v1.yaml`, `k8s/network-policies.yaml`, `k8s/litellm-ha-patch.yaml`, `k8s/gateway-api-route.yaml` — Manifests ครบชุดแยก Core Stack (14 docs), GAIE v1 + `llm-d` `InferenceObjective` (8 docs), Zero-Trust `NetworkPolicy` (2 docs), Optional Gateway HA และ `Gateway`/`HTTPRoute`/`ServiceMonitor` (`release: monitoring`)
 - `tests/test_gateway_resilience.py` — ชุดทดสอบ `pytest` ตรวจสอบความทนทานและ Metrics ครบทุกมิติ
 - `docs/adr-003-ai-gateway-and-inference-routing.md` — เอกสาร ADR-003
 - `verify_m4.sh` — สคริปต์ตรวจสอบความถูกต้องของ Module 4 และเชื่อมต่อสู่ Milestone Gate 2
@@ -2825,19 +2962,20 @@ VERIFY_MODE=cluster bash labs/m4-gateway/verify_m4.sh
 - [ ] `mock_vllm_server` ส่งออก Prometheus V1 metrics ครบชุด (`vllm:inter_token_latency_seconds_bucket` พร้อม Compat Alias `vllm:time_per_output_token_seconds_bucket` และ Cumulative Buckets ที่เพิ่มขึ้นแบบ Non-decreasing) และใช้ RAM `< 80 MB`
 - [ ] Pre-call PDPA Guardrail แปลงเลขบัตรประชาชนไทย 13 หลักเป็น `<THAI_ID_REDACTED>` และเบอร์มือถือ (`0xx`/`+66`) เป็น `<THAI_PHONE_REDACTED>` ก่อนเข้าสู่ Redis Cache และ Backend (รองรับ `None` และ Multimodal parts)
 - [ ] คีย์ `batch-team` (`10 RPM`) ถูกสกัดด้วย `HTTP 429` เมื่อยิงเกินโควตาโดยไม่กระทบ `realtime-team`, และ Primary Latency Spike สลับเส้นทางไป `vllm-secondary-svc` สำเร็จ
-- [ ] Manifests `k8s/gateway-stack.yaml` (22 documents, ไม่มี Hardcoded Secret) และ `k8s/gateway-api-route.yaml` ผ่านการตรวจสอบ YAML Parsing และสอดคล้องกับ `litellm_config.yaml` + `pdpa_guardrail.py`
+- [ ] Manifests `k8s/gateway-stack.yaml` (14 Core docs, ไม่มี Hardcoded Secret), `k8s/inference-extension-v1.yaml` (8 GAIE v1/`llm-d` docs), `k8s/network-policies.yaml`, และ `k8s/gateway-api-route.yaml` (`release: monitoring`) ผ่านการตรวจสอบ YAML Parsing และสอดคล้องกับ `litellm_config.yaml` + `pdpa_guardrail.py`
 - [ ] รัน `VERIFY_MODE=static bash labs/m4-gateway/verify_m4.sh` (และ `VERIFY_MODE=cluster` เมื่อมีคลัสเตอร์จริง) ผ่าน 100%
 
 ### 9.3 แหล่งเรียนรู้อ้างอิงประจำบทที่ 4 (Curated Verified Resources)
 1. **[แหล่งหลัก 4.1]** **LiteLLM Proxy Official Documentation (Routing, Fallbacks, Virtual Keys & Custom Guardrails)**  
    - URL: https://docs.litellm.ai/docs/proxy/quick_start และ https://docs.litellm.ai/docs/proxy/custom_guardrails  
    - ส่วนที่ควรอ่าน: *Load Balancing & Fallback Routing*, *Pre-call Guardrail Hooks*, *Redis Caching* (ใช้เวลาอ่าน ~3 ชั่วโมง | ฟรี)
-2. **[แหล่งหลัก 4.2]** **Kubernetes Gateway API Inference Extension (`InferencePool` & `Endpoint Picker`)**  
+2. **[แหล่งหลัก 4.2]** **Kubernetes Gateway API Inference Extension (`InferencePool` v1 & `Endpoint Picker`)**  
    - URL: https://gateway-api-inference-extension.sigs.k8s.io/  
-   - ส่วนที่ควรอ่าน: *Overview*, *Architecture (EPP)*, *InferencePool & InferenceModel CRDs* (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
-3. **[แหล่งเสริม]** **OWASP Top 10 for Large Language Model Applications (2025)**  
-   - URL: https://genai.owasp.org/llm-top-10/  
-   - ส่วนที่ควรอ่าน: *LLM02:2025 Sensitive Information Disclosure* & *LLM10:2025 Unbounded Consumption* (ใช้เวลาอ่าน ~1.5 ชั่วโมง | ฟรี)
+   - ส่วนที่ควรอ่าน: *Overview*, *Architecture (EPP)*, *InferencePool v1 CRD* (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+3. **[แหล่งเสริม]** **OWASP Top 10 for Large Language Model Applications (2025) & CNCF `llm-d`**  
+   - URL: https://genai.owasp.org/llm-top-10/ และ https://llm-d.ai/  
+   - ส่วนที่ควรอ่าน: *LLM02:2025 Sensitive Information Disclosure*, *LLM10:2025 Unbounded Consumption* และ `InferenceObjective` Routing (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **Production Kubernetes** *(O'Reilly — NetworkPolicies & Ingress Security)* และ **AI Engineering** *(Chip Huyen, O'Reilly 2025 — Guardrails & Gateway Routing)*
 
 ---
 
@@ -3078,6 +3216,13 @@ cat labs/m5-observability-sre/keda-vllm-scaledobject.yaml
 ```bash
 python3 labs/m5-observability-sre/chaos/trigger_incident.py --simulate
 ```
+
+> **Live Chaos Mode (สำหรับเครื่อง RAM 32GB เช่น HP Victus หรือ Cluster จริง):**
+> เมื่อติดตั้ง Prometheus, KEDA, LiteLLM และ `vllm-primary` บนคลัสเตอร์ `kind` เรียบร้อยแล้ว ให้เปิด `kubectl port-forward` พอร์ต `8000` และ `4000` แล้วรันโหมด `--live` เพื่อฉีด Chaos และยิง HTTP โหลดจริงให้ KEDA สเกล Pod 1 → 3:
+> ```bash
+> python3 labs/m5-observability-sre/chaos/trigger_incident.py --live --dry-run
+> # ตัด --dry-run ออกเมื่อเปิด port-forward แล้ว และล้างค่า Chaos หลังจบด้วย --live --reset
+> ```
 
 **ผลลัพธ์ที่คาดหวัง (Expected Output):**
 ```text
@@ -3371,6 +3516,7 @@ VERIFY_MODE=cluster bash labs/m5-observability-sre/verify_m5.sh
 3. **[แหล่งเสริม]** **OpenTelemetry Semantic Conventions for Generative AI**  
    - URL: https://opentelemetry.io/docs/specs/semconv/gen-ai/  
    - ส่วนที่ควรอ่าน: *GenAI Spans & Metrics Attributes* (ใช้เวลาอ่าน ~1 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **The Site Reliability Workbook** *(Google, Free Online — Chapter 5 Alerting on SLOs & Postmortem Culture)* และ **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025 — DCGM & Kernel Profiling)*
 
 ---
 
@@ -3446,7 +3592,7 @@ flowchart TB
         end
         Redis[("Redis 7 (redis-svc:6379)")]
         Postgres[("PostgreSQL 16 (postgres-svc:5432)")]
-        EPP["K8s Gateway API Inference Extension (EPP)\nInferencePool + InferenceModel\nSheds 'Sheddable' Batch when KV-Cache > 85%"]
+        EPP["K8s Gateway API Inference Extension (EPP v1.0.0)\nInferencePool v1 + llm-d InferenceObjective\nSheds Sheddable Batch (priority < 0) when KV-Cache > 85%"]
     end
 
     subgraph DataPlane["Model Serving & Storage Layer (1-2x NVIDIA L4 24GB / Mock vLLM)"]
@@ -3526,7 +3672,8 @@ $$\text{TTFT}_{\text{total}} = T_{\text{gateway\_auth\_pii}} + T_{\text{redis\_l
 labs/m6-capstone-siamshield/
 ├── Makefile                                    # [DoD #2] คำสั่งจัดการวงจรชีวิตโปรเจกต์จบครบวงจร (รวม create-secrets & verify-workspace)
 ├── k8s/
-│   └── siamshield-platform.yaml                # [DoD #2] Full Stack Manifest 24 Docs (Primary/Secondary แยก Pool, RBAC/Job, KEDA, /cache/huggingface)
+│   ├── siamshield-platform.yaml                # [DoD #2] Core Stack Manifest 15 Docs (Service labels ครบ, Non-root, Postgres Probe)
+│   └── siamshield-crds.yaml                    # [DoD #2] CRD Stack 9 Docs (EPP v1.0.0, GAIE v1 InferencePool, llm-d InferenceObjective, KEDA)
 ├── src/
 │   └── siamshield_simulator.py                 # [DoD #2 & #3] เอ็นจินจำลองและทดสอบ Two-Tier Platform + Multi-Fault Chaos
 ├── docs/
@@ -3561,11 +3708,11 @@ cp labs/m4-gateway/.env.example labs/m4-gateway/.env
 docker build -t mock-vllm-server:1.0.0 -f labs/m4-gateway/mock_vllm_server/Dockerfile labs/m4-gateway
 ```
 
-ไฟล์ `siamshield-platform.yaml` รวมทุกองค์ประกอบที่เราสร้างมาตั้งแต่บทที่ 1–5 เข้าไว้ใน Manifest เดียว (24 K8s Documents) ที่พร้อมสั่ง `kubectl apply -f` หลังสร้าง `Secret litellm-secrets` (สำหรับโหมด Local 16GB RAM ให้โหลดอิมเมจ `mock-vllm-server:1.0.0` เข้า `kind` ก่อน):
+ไฟล์ทั้งสองส่วน ได้แก่ `siamshield-platform.yaml` (**15 Core K8s Documents** ไม่ต้องพึ่ง CRDs) และ `siamshield-crds.yaml` (**9 CRD Documents**: GAIE v1 + `llm-d` + KEDA) รวมทุกองค์ประกอบตั้งแต่บทที่ 1–5 พร้อมสั่ง `kubectl apply -f` หลังสร้าง `Secret litellm-secrets` (สำหรับโหมด Local 16GB–32GB RAM ให้โหลดอิมเมจ `mock-vllm-server:1.0.0` เข้า `kind` ก่อน):
 - `PersistentVolumeClaim` ชื่อ `hf-model-cache-pvc` (`ReadWriteMany`, `storageClassName: standard` บน single-node `kind`; สำหรับ Cloud Multi-node ให้ใช้ RWX CSI เช่น EFS/Filestore) ผูกเข้ากับ `HF_HOME=/cache/huggingface` (+ `VLLM_CACHE_ROOT=/tmp/vllm-cache`)
-- `Deployment` และ `Service` ของ `vllm-primary-svc:8000` (`inference-pool: vllm-qwen-pool`) และ `vllm-secondary-svc:8000` (แยกป้ายเป็น `inference-pool: vllm-qwen-pool-secondary` เพื่อกันไม่ให้ EPP ดึง Standby Pool เข้าคิวหลัก) ใช้อิมเมจ `mock-vllm-server:1.0.0` แบบ Non-root `UID 10001`, `readOnlyRootFilesystem: true`, `/tmp` emptyDir, `terminationGracePeriodSeconds: 60` และ `preStop: sleep 5`
-- `ConfigMap` (`litellm-config` ที่มี `pdpa_guardrail.py`, `num_retries: 0`, `qwen2.5-7b-batch`), `PersistentVolumeClaim` (`postgres-data-pvc`), `Job` (`litellm-init-virtual-keys`), และ `Deployment`/`Service` ของ `litellm-gateway-svc:4000`, `redis-svc:6379`, `postgres-svc:5432`, พร้อม `ServiceAccount`/`Role`/`RoleBinding` สำหรับ `vllm-qwen-epp:9002` (`epp:v0.3.0`)
-- `InferencePool` (`vllm-qwen-pool`) และ `InferenceModel` แยกระหว่าง `siamshield-tier-realtime` (`modelName: qwen2.5-7b`, `criticality: Critical`) และ `siamshield-tier-batch` (`modelName: qwen2.5-7b-batch`, `criticality: Sheddable`)
+- `Deployment` และ `Service` (ติด label `app: vllm-serving` / `app: litellm-gateway` เพื่อให้ `ServiceMonitor` จับติด) ของ `vllm-primary-svc:8000` (`inference-pool: vllm-qwen-pool`) และ `vllm-secondary-svc:8000` (แยกป้ายเป็น `inference-pool: vllm-qwen-pool-secondary` เพื่อกันไม่ให้ EPP ดึง Standby Pool เข้าคิวหลัก) ใช้อิมเมจ `mock-vllm-server:1.0.0` แบบ Non-root `UID 10001`, `readOnlyRootFilesystem: true`, `/tmp` emptyDir, `terminationGracePeriodSeconds: 60` และ `preStop: sleep 5`
+- `ConfigMap` (`litellm-config` ที่มี `pdpa_guardrail.py`, `num_retries: 0`, `qwen2.5-7b-batch`), `PersistentVolumeClaim` (`postgres-data-pvc`), `Job` (`litellm-init-virtual-keys`), และ `Deployment`/`Service` ของ `litellm-gateway-svc:4000`, `redis-svc:6379`, `postgres-svc:5432`
+- ใน `siamshield-crds.yaml`: `ServiceAccount`/`Role`/`RoleBinding` + `Deployment`/`Service` ของ `vllm-qwen-epp:9002` (`epp:v1.0.0`), `InferencePool` (`inference.networking.k8s.io/v1`: `vllm-qwen-pool`), และ `InferenceObjective` (`llm-d.ai/v1`) แยกระหว่าง `siamshield-tier-realtime` (`priority: 100`) และ `siamshield-tier-batch` (`priority: -10`, Sheddable)
 - `KEDA ScaledObject` (`vllm-keda-scaler`) ที่สเกลตาม `vllm:num_requests_waiting > 5` (`metricType: AverageValue`) และ `vllm:kv_cache_usage_perc > 0.80` (`metricType: Value`) โดยกรองด้วย Label จริง `pod=~"vllm-primary-.*"`
 
 #### ขั้นตอนที่ 2: รันเอ็นจินจำลองและชุดทดสอบโปรเจกต์จบ (`src/siamshield_simulator.py`)
@@ -3706,7 +3853,7 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 - **สถาปัตยกรรมที่เราเลือกใช้ (Priority-Shaped Shared Pool + Warm Standby Failover):**
   - เราเปิดให้ทั้ง 2 การ์ดสามารถรับงานได้ภายใต้การควบคุม 3 ชั้น:
     1. **ที่ชั้น `LiteLLM Proxy`:** จำกัดโควตา RPM/TPM ของ `sk-batch-team` ไม่ให้กินความจุเกิน 30% ในช่วงเวลาทำการ
-    2. **ที่ชั้น `Gateway API Inference Extension (EPP)`:** กำหนด `InferenceModel` ของ Realtime เป็น `Critical` และของ Batch เป็น `Sheddable` เมื่อค่า `vllm:kv_cache_usage_perc` เกิน `85%` ตัว EPP จะสั่งตัดโหลด (Load Shedding `HTTP 429`) เฉพาะงาน Batch ทันทีเพื่อสงวนพื้นที่ให้ Realtime 100%
+    2. **ที่ชั้น `Gateway API Inference Extension (EPP)` + `llm-d`:** กำหนด `InferenceObjective` ของ Realtime เป็น `priority: 100` (Critical) และของ Batch เป็น `priority: -10` (Sheddable) เมื่อค่า `vllm:kv_cache_usage_perc` เกิน `85%` ตัว EPP จะสั่งตัดโหลด (Load Shedding `HTTP 429`) เฉพาะงาน Batch ทันทีเพื่อสงวนพื้นที่ให้ Realtime 100%
     3. **ที่ชั้น `vLLM` V1 Scheduler:** ตั้งค่า `--max-num-batched-tokens 2048` (Unified Chunked Prefill) เพื่อหั่น Prompt ยาวของงาน Batch ออกเป็นชิ้นย่อย ไม่ให้บล็อกเฟส Decode ของงาน Realtime
 
 ---
@@ -3794,7 +3941,7 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 
 ### 10.1 รายการไฟล์ส่งมอบใน [`labs/m6-capstone-siamshield/`](../labs/m6-capstone-siamshield/) (Deliverables)
 - `Makefile` — คำสั่งรวมสำหรับการเตรียม Local Environment (`create-secrets`), สร้าง/โหลดอิมเมจ, รัน Simulator, และตรวจประเมิน `verify` / `verify-workspace`
-- `k8s/siamshield-platform.yaml` — Full-Stack Kubernetes Manifests 24 Documents (`PVC x2`, `ConfigMap`, `vllm-primary`, `vllm-secondary` แยก Pool, `litellm-gateway`, `Job litellm-init-virtual-keys`, `ServiceAccount`/`Role`/`RoleBinding`/`vllm-qwen-epp`, `redis`, `postgres`, `InferencePool`, `InferenceModel`, `ScaledObject` — ไม่มี Hardcoded `Secret`)
+- `k8s/siamshield-platform.yaml` และ `k8s/siamshield-crds.yaml` — Full-Stack Kubernetes Manifests แยก Core Stack (15 Docs พร้อม `Service` labels `app: vllm-serving`/`app: litellm-gateway` เพื่อให้ `ServiceMonitor` จับติด) และ CRD Stack (9 Docs: `EPP v1.0.0`, `InferencePool` `v1`, `llm-d` `InferenceObjective`, `ScaledObject`) — ไม่มี Hardcoded `Secret`
 - `src/siamshield_simulator.py` — โปรแกรมจำลองและชุดทดสอบ `pytest` พิสูจน์ PDPA Redaction, Noisy Neighbor Isolation, Failover, และ KEDA Scaling
 - `docs/design-doc.md`, `docs/interview-defense-guide.md`, `docs/runbooks/capstone-runbook.md`, `docs/postmortems/capstone-postmortem.md` — แม่แบบ Starter Templates & เอกสารหลักฐาน DoD #1, #4 และ #5
 - `reports/capstone-optimization-report.md` — แม่แบบ Starter Template รายงานเปรียบเทียบ Baseline vs Optimized Two-Tier Performance (DoD #3)
@@ -3803,7 +3950,7 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 
 ### 10.2 เกณฑ์ผ่าน (Pass Criteria Checklist)
 - [ ] คะแนนจาก `verify_capstone.sh --target workspace` ได้ **100 / 100 คะแนน** (เกณฑ์ขั้นต่ำ >= 85 คะแนน) และไม่ติด Mandatory Auto-Fail ทั้ง 3 ข้อ
-- [ ] Manifest `k8s/siamshield-platform.yaml` ผ่าน `yaml.safe_load_all` ครบ 24 Documents, ใช้ `mock-vllm-server:1.0.0`, ตั้ง `runAsUser: 10001` & `readOnlyRootFilesystem: true`, ไม่มี Hardcoded `Secret`, และจับคู่ `ConfigMap litellm-config` ตรงกับ M4 100%
+- [ ] Manifests `k8s/siamshield-platform.yaml` (15 Core Docs + `Service` labels) และ `k8s/siamshield-crds.yaml` (9 GAIE v1 / `llm-d` / KEDA Docs) ผ่าน `yaml.safe_load_all`, ใช้ `mock-vllm-server:1.0.0`, ตั้ง `runAsUser: 10001` & `readOnlyRootFilesystem: true`, ไม่มี Hardcoded `Secret`, และจับคู่ `ConfigMap litellm-config` ตรงกับ M4 100%
 - [ ] ทดสอบ Two-Tier Isolation ผ่านจริง: `tier-realtime` รักษา SLO (`TTFT p95 < 800 ms`, `ITL p95 < 30 ms`) ขณะ `tier-batch` ถูกจำกัดด้วย `HTTP 429` และไม่มีเลขบัตร 13 หลักรั่วไหล
 
 ### 10.3 แหล่งเรียนรู้อ้างอิงประจำบทที่ 6 (Curated Verified Resources)
@@ -3841,6 +3988,12 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 5. **Handbook Canonical Naming & Guardrails SSOT**  
    - URL / Reference: [`../SPEC_AND_STYLE_GUIDE.md`](../SPEC_AND_STYLE_GUIDE.md)  
    - ส่วนที่ควรอ่าน: Canonical ports, model IDs, `HF_HOME=/cache/huggingface`, V1 metrics (~30 นาที | Local)
+6. **Portability Guide & Optional AWS Cloud Track (`g6.xlarge` Spot L4)**  
+   - URL / Reference: [`../PORTABILITY_AND_QUICKSTART.md`](../PORTABILITY_AND_QUICKSTART.md) และ [`../labs/optional-cloud-aws/README.md`](../labs/optional-cloud-aws/README.md)  
+   - ส่วนที่ควรอ่าน: DevContainer/Compose setup, Offline Reading, AWS S3/ECR/Budgets & Dead-Man's Switch (~1.5 ชั่วโมง | ฟรี / \$10–\$30 AWS)
+7. **2025–2026 Core Books (*AI Systems Performance Engineering*, *AI Engineering*, *Ultra-Scale Playbook*, *How to Scale Your Model*)**  
+   - URL / Reference: [https://huggingface.co/spaces/nanotron/ultrascale-playbook](https://huggingface.co/spaces/nanotron/ultrascale-playbook) และ [https://jax-ml.github.io/scaling-book/](https://jax-ml.github.io/scaling-book/)  
+   - ส่วนที่ควรอ่าน: Roofline math, Disaggregated PD, Tensor/Pipeline Parallelism & Eval Gates (เสริมเชิงลึก)
 
 ### Module 1: Production Containers, Bounded Concurrency, CI/CD & IaC (`chapters/01`)
 1. **[แหล่งหลัก 1.1]** **Astral `uv` Docker Integration Guide & Docker Official Multi-Stage Docs**
@@ -3852,6 +4005,7 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 3. **[แหล่งเสริม]** **Trivy Official Docs & GitHub Actions Documentation**
    - URL: https://trivy.dev/docs/ และ https://docs.github.com/en/actions
    - ส่วนที่ควรอ่าน: *Trivy Container Image & Misconfiguration Scanning* (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025 — บท OS/Docker/GPU Environment Tuning)* และ **Production Kubernetes** *(Josh Rosso et al., O'Reilly — บท Container Security & Resource Management)*
 
 ### Module 2: Kubernetes GPU Orchestration, VRAM Sizing & Time-Slicing (`chapters/02`)
 1. **[แหล่งหลัก]** **NVIDIA GPU Operator Official Documentation**
@@ -3860,8 +4014,9 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 2. **[แหล่งเสริม 1]** **Kubernetes Official Documentation (Probes, Scheduling & GPUs)**
    - URL: https://kubernetes.io/docs/home/
    - ส่วนที่ควรอ่าน: *Configure Liveness, Readiness and Startup Probes*, *Taints and Tolerations*, *Pod Priority and Preemption* (ใช้เวลาอ่าน ~3 ชั่วโมง | ฟรี)
-3. **[แหล่งเสริม 2]** **Helm Docs, Kubernetes `kind` Docs & Run:ai `fake-gpu-operator`**
-   - URL: https://helm.sh/docs/ , https://kind.sigs.k8s.io/docs/ และ https://github.com/run-ai/fake-gpu-operator (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+3. **[แหล่งเสริม 2]** **Helm Docs, Kubernetes `kind` Docs, Kubernetes DRA Docs & Run:ai `fake-gpu-operator`**
+   - URL: https://helm.sh/docs/ , https://kind.sigs.k8s.io/docs/ , https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/ และ https://github.com/run-ai/fake-gpu-operator (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **Production Kubernetes** *(Josh Rosso et al., O'Reilly)* และ **The Ultra-Scale Playbook** *(Hugging Face, 2025 — บท GPU Memory & Compute Math)*
 
 ### Module 3: `vLLM` V1 Internals, Prefix Caching, Quantization & FinOps (`chapters/03`)
 1. **[แหล่งหลัก 3.1]** **`vLLM` Official Documentation — V1 Engine Architecture & Performance Tuning**
@@ -3873,17 +4028,19 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 3. **[แหล่งเสริม]** **Anyscale / vLLM Blog — Prefix Caching & Chunked Prefill Tuning**
    - URL: https://docs.vllm.ai/en/latest/features/automatic_prefix_caching.html
    - ส่วนที่ควรอ่าน: *How APC Works & Metrics (`prefix_cache_hits_total`)* (ใช้เวลาอ่าน ~1 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ 2025–2026]** **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025)*, **AI Engineering** *(Chip Huyen, O'Reilly 2025 — Eval Gates & Latency/Cost)*, และ **How to Scale Your Model** *(Google DeepMind, 2025 — Roofline & Parallelism Math)*
 
 ### Module 4: `LiteLLM` AI Gateway, K8s `InferencePool`/`EPP` & PDPA Guardrails (`chapters/04`)
 1. **[แหล่งหลัก 4.1]** **LiteLLM Proxy Official Documentation (Routing, Fallbacks, Virtual Keys & Custom Guardrails)**
    - URL: https://docs.litellm.ai/docs/proxy/quick_start และ https://docs.litellm.ai/docs/proxy/custom_guardrails
    - ส่วนที่ควรอ่าน: *Load Balancing & Fallback Routing*, *Pre-call Guardrail Hooks*, *Redis Caching* (ใช้เวลาอ่าน ~3 ชั่วโมง | ฟรี)
-2. **[แหล่งหลัก 4.2]** **Kubernetes Gateway API Inference Extension (`InferencePool` & `Endpoint Picker`)**
+2. **[แหล่งหลัก 4.2]** **Kubernetes Gateway API Inference Extension (`InferencePool` v1 & `Endpoint Picker`)**
    - URL: https://gateway-api-inference-extension.sigs.k8s.io/
-   - ส่วนที่ควรอ่าน: *Overview*, *Architecture (EPP)*, *InferencePool & InferenceModel CRDs* (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
-3. **[แหล่งเสริม]** **OWASP Top 10 for Large Language Model Applications (2025)**
-   - URL: https://genai.owasp.org/llm-top-10/
-   - ส่วนที่ควรอ่าน: *LLM02:2025 Sensitive Information Disclosure* & *LLM10:2025 Unbounded Consumption* (ใช้เวลาอ่าน ~1.5 ชั่วโมง | ฟรี)
+   - ส่วนที่ควรอ่าน: *Overview*, *Architecture (EPP)*, *InferencePool v1 CRD* (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+3. **[แหล่งเสริม]** **OWASP Top 10 for Large Language Model Applications (2025) & CNCF `llm-d`**
+   - URL: https://genai.owasp.org/llm-top-10/ และ https://llm-d.ai/
+   - ส่วนที่ควรอ่าน: *LLM02:2025 Sensitive Information Disclosure*, *LLM10:2025 Unbounded Consumption* และ `InferenceObjective` Routing (ใช้เวลาอ่าน ~2 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **Production Kubernetes** *(O'Reilly — NetworkPolicies & Ingress Security)* และ **AI Engineering** *(Chip Huyen, O'Reilly 2025 — Guardrails & Gateway Routing)*
 
 ### Module 5: NVIDIA DCGM Telemetry, Prometheus, KEDA & SRE Drills (`chapters/05`)
 1. **[แหล่งหลัก 5.1]** **KEDA Prometheus Scaler Documentation & NVIDIA DCGM Exporter Metrics Guide**
@@ -3895,6 +4052,7 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 3. **[แหล่งเสริม]** **OpenTelemetry Semantic Conventions for Generative AI**
    - URL: https://opentelemetry.io/docs/specs/semconv/gen-ai/
    - ส่วนที่ควรอ่าน: *GenAI Spans & Metrics Attributes* (ใช้เวลาอ่าน ~1 ชั่วโมง | ฟรี)
+4. **[หนังสืออ้างอิงแนะนำ]** **The Site Reliability Workbook** *(Google, Free Online — Chapter 5 Alerting on SLOs & Postmortem Culture)* และ **AI Systems Performance Engineering** *(Chris Fregly, O'Reilly 2025 — DCGM & Kernel Profiling)*
 
 ### Module 6: Capstone — `Project SiamShield AI` (`chapters/06`)
 1. **[แหล่งหลัก 6.1]** **Kubernetes Multi-Tenancy & PriorityClass / Pod Disruption Budgets**
@@ -3919,7 +4077,7 @@ VERIFY_MODE=static bash labs/m6-capstone-siamshield/verify_capstone.sh --target 
 | **DoD #2** | Reproducible IaC, K8s Helm, Gateway & Two-Tier Stack | [`labs/m6-capstone-siamshield/Makefile`](../labs/m6-capstone-siamshield/Makefile)<br>[`labs/m6-capstone-siamshield/k8s/siamshield-platform.yaml`](../labs/m6-capstone-siamshield/k8s/siamshield-platform.yaml)<br>[`labs/m6-capstone-siamshield/src/siamshield_simulator.py`](../labs/m6-capstone-siamshield/src/siamshield_simulator.py) | Non-root (`UID 10001`), `readOnlyRootFilesystem: true`, `HF_HOME=/cache/huggingface` PVC, `terminationGracePeriodSeconds: 60`, PDPA `<THAI_ID_REDACTED>`, แยกโควตา Two-Tier (`HTTP 429` บน `tier-batch`) | 25 คะแนน |
 | **DoD #3** | Measurable Latency & Throughput Optimization Report | [`labs/m6-capstone-siamshield/reports/capstone-optimization-report.md`](../labs/m6-capstone-siamshield/reports/capstone-optimization-report.md)<br>[`labs/m3-vllm/optimization-report-template.md`](../labs/m3-vllm/optimization-report-template.md) | แสดง Before vs After (`AWQ 4-bit` + APC + Chunked Prefill + EPP): `tier-realtime` TTFT p95 `< 800 ms`, ITL p95 `< 30 ms`, KV-Cache pool `4.76x` พร้อมอธิบายกลไกฮาร์ดแวร์ | 20 คะแนน |
 | **DoD #4** | SRE Observability, KEDA Autoscaling, Runbook & Blameless Postmortem | [`labs/m6-capstone-siamshield/docs/runbooks/capstone-runbook.md`](../labs/m6-capstone-siamshield/docs/runbooks/capstone-runbook.md)<br>[`labs/m6-capstone-siamshield/docs/postmortems/capstone-postmortem.md`](../labs/m6-capstone-siamshield/docs/postmortems/capstone-postmortem.md)<br>[`labs/m5-observability-sre/grafana-dashboard-vllm-v1.json`](../labs/m5-observability-sre/grafana-dashboard-vllm-v1.json) | ใช้ Canonical `vLLM` V1 Metrics (`prefix_cache_hits_total`, `kv_cache_usage_perc`, `num_requests_waiting`), Dual-Trigger KEDA (`AverageValue` + `Value`), 4-Step Runbook และ 5 Whys Postmortem | 20 คะแนน |
-| **DoD #5** | Mid-Level Architecture Defense & Interview Readiness | [`labs/m6-capstone-siamshield/docs/interview-defense-guide.md`](../labs/m6-capstone-siamshield/docs/interview-defense-guide.md)<br>คำถาม-เฉลย 28 ข้อในบทที่ 1–6 | ตอบคำถามเชิงสถาปัตยกรรม การคำนวณคอขวด (`Prefill` Compute vs `Decode` Memory Bandwidth), FinOps Break-even และการกู้คืนระบบได้อย่างมีเหตุผลเชิงวิศวกรรม | 15 คะแนน |
+| **DoD #5** | Mid-Level Architecture Defense & Interview Readiness | [`labs/m6-capstone-siamshield/docs/interview-defense-guide.md`](../labs/m6-capstone-siamshield/docs/interview-defense-guide.md)<br>คำถาม-เฉลย 29 ข้อในบทที่ 1–6 | ตอบคำถามเชิงสถาปัตยกรรม การคำนวณคอขวด (`Prefill` Compute vs `Decode` Memory Bandwidth), FinOps Break-even และการกู้คืนระบบได้อย่างมีเหตุผลเชิงวิศวกรรม | 15 คะแนน |
 | **รวมทั้งหมด** | **End-to-End AI Platform Readiness** | **ครบทั้ง 6 Labs (`labs/m1`–`labs/m6`)** | **รันชุดสคริปต์ตรวจสอบอัตโนมัติครบทุก Module ผ่าน 100%** | **100 คะแนน** |
 
 ### ชุดคำสั่งตรวจสอบอัตโนมัติครบทั้งเล่ม (Complete Verification Suite Commands)

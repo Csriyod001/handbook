@@ -16,6 +16,7 @@ echo "==========================================================================
 
 echo "[1/5] Checking required files in labs/m1-foundations/..."
 for f in \
+  "README.md" \
   "pyproject.toml" \
   "Dockerfile" \
   "Dockerfile.baseline" \
@@ -25,7 +26,12 @@ for f in \
   "infra/variables.tf" \
   "infra/main.tf" \
   "infra/outputs.tf" \
+  "infra/k8s-bootstrap/versions.tf" \
+  "infra/k8s-bootstrap/variables.tf" \
+  "infra/k8s-bootstrap/main.tf" \
+  "infra/k8s-bootstrap/outputs.tf" \
   ".github/workflows/ci.yml" \
+  "../../.github/workflows/ci.yml" \
   "docs/adr-001-container-and-model-cache-strategy.md"; do
   if [ ! -f "$f" ]; then
     echo "  [FAIL] Missing required file: $f"
@@ -42,7 +48,7 @@ grep -q "USER 10001:10001" Dockerfile && echo "  [OK] Non-root UID 10001 enforce
 grep -q 'SERVICE_NAME="ai-inference-service"' Dockerfile && echo "  [OK] Canonical Image/Service 'ai-inference-service' configured"
 grep -q 'HF_HOME="/cache/huggingface"' Dockerfile && echo "  [OK] Canonical non-root HF_HOME=/cache/huggingface configured"
 grep -q 'VLLM_CACHE_ROOT="/tmp/vllm-cache"' Dockerfile && echo "  [OK] Canonical VLLM_CACHE_ROOT=/tmp/vllm-cache configured"
-grep -q 'PORT="8000"' Dockerfile && echo "  [OK] Canonical Port 8000 configured"
+grep -q "uv pip install --no-cache -r pyproject.toml" Dockerfile && echo "  [OK] Dependencies installed from pyproject.toml"
 
 echo ""
 echo "[3/5] Verifying OpenTofu declarative configuration & SSOT names..."
@@ -54,9 +60,10 @@ grep -q 'default     = "hf-model-cache-pvc"' infra/variables.tf && echo "  [OK] 
 grep -q "kubeadm_config_patches" infra/main.tf && echo "  [OK] Kind worker node labels wired via kubeadm_config_patches"
 
 if command -v tofu >/dev/null 2>&1; then
-  echo "  [RUN] Running tofu fmt -check & tofu validate..."
+  echo "  [RUN] Running tofu fmt -check & tofu validate (Stage 1 & Stage 2)..."
   (cd infra && tofu fmt -check && tofu init -backend=false >/dev/null && tofu validate)
-  echo "  [OK] OpenTofu fmt & validate passed"
+  (cd infra/k8s-bootstrap && tofu fmt -check && tofu init -backend=false >/dev/null && tofu validate)
+  echo "  [OK] OpenTofu fmt & validate passed for both Stage 1 & Stage 2"
 elif [ "$VERIFY_MODE" = "cluster" ]; then
   echo "  [FAIL] VERIFY_MODE=cluster requires 'tofu' CLI"
   exit 1

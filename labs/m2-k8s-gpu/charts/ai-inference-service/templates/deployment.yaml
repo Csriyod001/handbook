@@ -47,6 +47,10 @@ spec:
           args:
             - "--model"
             - {{ .Values.model.id | quote }}
+            {{- if .Values.model.revision }}
+            - "--revision"
+            - {{ .Values.model.revision | quote }}
+            {{- end }}
             - "--port"
             - {{ .Values.service.port | quote }}
             - "--max-model-len"

@@ -25,9 +25,10 @@ ai-infra-handbook/
 │   ├── m1-foundations/                    # แล็บ Module 1 (Dockerfile, FastAPI Bounded Queue, OpenTofu, Trivy CI)
 │   ├── m2-k8s-gpu/                        # แล็บ Module 2 (Helm Chart, Startup/Readiness Probes, VRAM Calculator, Time-slicing)
 │   ├── m3-vllm/                           # แล็บ Module 3 (vLLM V1 Baseline vs Optimized Scripts, Benchmark Suite; symlinked as m3-vllm-serving)
-│   ├── m4-gateway/                        # แล็บ Module 4 (LiteLLM Config, Mock vLLM Server + Dockerfile, PDPA Guardrail, Failover Tests; symlinked as m4-ai-gateway)
-│   ├── m5-observability-sre/              # แล็บ Module 5 (Grafana Dashboard JSON, Alert Rules, KEDA ScaledObject, Chaos Script & docs/)
-│   └── m6-capstone-siamshield/            # แล็บ Module 6 (End-to-End Project SiamShield AI: Multi-Tier Realtime + Batch Platform)
+│   ├── m4-gateway/                        # แล็บ Module 4 (LiteLLM Config, Mock vLLM Server + Dockerfile, PDPA Guardrail, GAIE v1 & NetworkPolicy; symlinked as m4-ai-gateway)
+│   ├── m5-observability-sre/              # แล็บ Module 5 (Grafana Dashboard JSON, Alert Rules, KEDA ScaledObject, Live/Sim Chaos Script & docs/)
+│   ├── m6-capstone-siamshield/            # แล็บ Module 6 (End-to-End Project SiamShield AI: Multi-Tier Realtime + Batch Platform)
+│   └── optional-cloud-aws/                # แล็บเสริม Cloud AWS (S3 Model Cache, ECR, IAM, Budgets & Optional g6.xlarge Spot + Auto-Terminate)
 └── dist/                                  # ไฟล์หนังสือฉบับรวมเล่มสมบูรณ์ (Compiled Complete Handbook Artifacts)
 ```
 
@@ -122,11 +123,19 @@ ai-infra-handbook/
 | บริบทการใช้งาน | ชื่อโมเดลมาตรฐาน (Hugging Face ID) | การตั้งค่าหน่วยความจำบังคับ | เหตุผลทางวิศวกรรม |
 | :--- | :--- | :--- | :--- |
 | **Local CPU Path (Single Pod)** | `Qwen/Qwen2.5-0.5B-Instruct` | `VLLM_CPU_KVCACHE_SPACE=1`, `--max-model-len 2048`, `--dtype bfloat16` | กิน RAM < 2.5 GB ต่อ Pod ป้องกันเครื่องผู้เรียนที่มี RAM 16GB ค้าง (OOM) |
-| **Local Multi-Pod / Chaos Path** | `mock-qwen2.5-7b` (ผ่าน `mock_vllm_server`) | ใช้ RAM < 80 MB ต่อ Pod | จำลอง Streaming TTFT/ITL และ `/metrics` ของ vLLM V1 สำหรับซ้อม Gateway/KEDA บนเครื่อง 16GB |
+| **Local CUDA Path (RTX 4050 6GB)** | `Qwen/Qwen2.5-3B-Instruct-AWQ` *(เทียบ `Qwen/Qwen2.5-1.5B-Instruct`)* | `--quantization awq_marlin`, `--kv-cache-dtype fp8`, `--gpu-memory-utilization 0.85`, `--max-model-len 2048`, `--enforce-eager` | ใช้การ์ดจอ Local 6GB VRAM (Ada Lovelace) รัน `vLLM` V1 (`v0.11.0`) บน CUDA จริงที่ต้นทุน \$0 |
+| **Local Multi-Pod / Chaos Path** | `mock-qwen2.5-7b` (ผ่าน `mock_vllm_server`) | ใช้ RAM < 80 MB ต่อ Pod | จำลอง Streaming TTFT/ITL และ `/metrics` ของ vLLM V1 สำหรับซ้อม Gateway/KEDA บนเครื่อง 16–32GB |
 | **Cloud GPU Baseline (L4 24GB)** | `Qwen/Qwen2.5-7B-Instruct` | `--dtype bfloat16`, `--gpu-memory-utilization 0.85`, `--max-model-len 8192`, `--no-enable-prefix-caching` | ใช้เป็น Baseline (Weights ~15.2 GB) เพื่อแสดงอาการ KV-Cache ตึงเมื่อ Concurrency สูง |
-| **Cloud GPU Optimized (L4 24GB)** | `Qwen/Qwen2.5-7B-Instruct-AWQ` *(หรือ FP8)* | `--quantization awq_marlin` (หรือ `fp8`), `--gpu-memory-utilization 0.92`, `--max-model-len 4096`, `--max-num-batched-tokens 2048` | ลด Weights เหลือ ~4.5 GB (AWQ) ขยายกองกลาง KV-Cache >3 เท่า เปิด APC (ค่าเริ่มต้น V1) |
+| **Cloud GPU Optimized (L4 24GB)** | `Qwen/Qwen2.5-7B-Instruct-AWQ` *(หรือ FP8 `--quantization fp8 --kv-cache-dtype fp8`)* | `--quantization awq_marlin` (หรือ `fp8`), `--gpu-memory-utilization 0.92`, `--max-model-len 4096`, `--max-num-batched-tokens 2048` | ลด Weights เหลือ ~4.5 GB (AWQ) หรือ ~8 GB (FP8) ขยายกองกลาง KV-Cache >3 เท่า เปิด APC (ค่าเริ่มต้น V1) |
 | **Cloud GPU Time-Slicing (4 Pods)** | `Qwen/Qwen2.5-0.5B-Instruct` | `--gpu-memory-utilization 0.20 --enforce-eager` | ปิด CUDA Graph (`--enforce-eager`) เพื่อประหยัด VRAM overhead ต่อโปรเซสเมื่อรัน 4 Pods บนการ์ดใบเดียว |
 | **VRAM Math Worked Example** | `meta-llama/Llama-3.1-8B-Instruct` | $P=8\text{B}, L=32, H_{\text{kv}}=8, d_{\text{head}}=128$ (128 KiB/token ใน FP16) | ใช้เป็นโจทย์มาตรฐานสำหรับคำนวณ GQA KV-Cache ด้วยมือและใน `vram_calculator.py` |
+
+### 3.3.1 มาตรฐานเวอร์ชันซอฟต์แวร์และ API ยุค 2026
+| Component | Canonical Version / API (2026 Edition) | หมายเหตุ |
+| :--- | :--- | :--- |
+| **`vllm/vllm-openai`** | `v0.11.0` | รองรับ `vllm bench serve`, V1 Unified Scheduler, `awq_marlin` และ Native FP8 (`--kv-cache-dtype fp8`) |
+| **`ghcr.io/berriai/litellm`** | `main-v1.72.0-stable` | ปิดช่องโหว่ CVE เก่าและรองรับ Custom Guardrail Pre-call Hook + OpenTelemetry GenAI |
+| **Gateway API Inference Extension** | `inference.networking.k8s.io/v1` (`InferencePool`) + `llm-d.ai/v1` (`InferenceObjective`) + `epp:v1.0.0` | อัปเกรดจาก `v1alpha2`/`InferenceModel` เดิม โดย `InferenceObjective` ใช้ `poolRefs` + signed `priority` (`+100` Critical / `-10` Sheddable) และแยก CRD Manifests ออกจาก Core Stack |
 
 ### 3.4 มาตรฐานชื่อ Prometheus Metrics (vLLM V1 Engine & NVIDIA DCGM)
 > **ข้อควรระวังสูงสุด:** ห้ามใช้ชื่อ Metric เก่าของ vLLM V0 ที่เลิกใช้แล้ว หรือเขียนชื่อ Counter โดยตกคำว่า `_total`
@@ -149,9 +158,9 @@ ai-infra-handbook/
 
 ---
 
-## 4. กฎเหล็กความถูกต้องทางเทคนิค 9 ข้อจาก Independent Review (Mandatory Engineering Guardrails)
+## 4. กฎเหล็กความถูกต้องทางเทคนิค 12 ข้อจาก Independent Review (Mandatory Engineering Guardrails)
 
-ในการเขียนเนื้อหาบทที่ 1–6 และโค้ดแล็บทุกไฟล์ ผู้เขียนต้องตรวจสอบให้ผ่านกฎเหล็ก 9 ข้อต่อไปนี้เสมอ:
+ในการเขียนเนื้อหาบทที่ 1–6 และโค้ดแล็บทุกไฟล์ ผู้เขียนต้องตรวจสอบให้ผ่านกฎเหล็ก 12 ข้อต่อไปนี้เสมอ:
 
 1. **พฤติกรรมเริ่มต้นของ `vLLM` V1 Engine & สาเหตุของการขยาย KV-Cache:**
    - ใน `vLLM` V1 ทั้ง **Automatic Prefix Caching (`--enable-prefix-caching`)** และ **Unified Chunked Prefill** ถูกเปิดใช้งานเป็นค่าเริ่มต้น (Enabled by default) ดังนั้นการทดสอบ Baseline ที่ต้องการจำลองระบบไร้แคชต้องใส่แฟล็ก `--no-enable-prefix-caching` อย่างชัดเจน
@@ -181,3 +190,7 @@ ai-infra-handbook/
 10. **ความซื่อสัตย์ระหว่าง Mock Benchmark กับ Production GPU SLA:**
    - ห้ามนำตัวเลขความเร็วของ Lightweight Mock Pod (`<80MB` RAM, บูตใน `8–10 วินาที`, failover `~60 ms`) ไปกล่าวอ้างเป็นความเร็วของ Production `vLLM` GPU Pod หรือ Real LiteLLM Gateway; ใน Production จริงการบูต GPU Pod จาก Shared PVC (`HF_HOME=/cache/huggingface`) ใช้เวลา ~`35–75 วินาที` (เทียบกับ `180–240+ วินาที` เมื่อต้องดาวน์โหลดใหม่) และการทำ Primary-to-Secondary Failover ใช้เวลา ~`3.0–3.5 วินาที` ตามค่า `stream_timeout` (โดยต้องตั้ง `num_retries: 0`)
    - แยก **Starter Templates** ออกจาก **Worked Reference Examples (`examples/`)** เพื่อไม่ให้ผู้เรียนคัดลอกคำตอบล่วงหน้าโดยไม่ได้ลงมือทดลองและวัดผลจริง
+11. **Model Supply Chain & Revision SHA Pinning:**
+   - ในระบบ Production ห้ามดึงโมเดลจาก branch `main` ของ Hugging Face แบบไม่ระบุเวอร์ชัน; ต้องรองรับการระบุ `--revision <commit-sha>` หรือดึง Artifact ที่ผ่านการสแกนแล้วจาก Private Object Storage (`S3`/`GCS`) ในองค์กร
+12. **Quantization Quality Eval Gate:**
+   - ทุกครั้งที่เปลี่ยนความละเอียดโมเดล (`BF16` → `AWQ`/`FP8`) ห้ามวัดเพียงแค่ TTFT/TPS แต่ต้องรัน Eval Gate ตรวจสอบความถูกต้องของภาษาไทยและ Structured JSON Output ด้วย [`labs/m3-vllm/eval_thai_quality.py`](./labs/m3-vllm/eval_thai_quality.py) เสมอ

@@ -17,11 +17,12 @@ updateStrategy:
     maxSurge: 0
     maxUnavailable: 1
 
-nodeSelector: {}
+# Helm 3 requires explicit null (not `{}`) to erase inherited keys from values.yaml
+nodeSelector: null
 
 image:
   repository: vllm/vllm-openai
-  tag: "v0.8.5"
+  tag: "v0.11.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -31,6 +32,7 @@ service:
 
 model:
   id: "Qwen/Qwen2.5-0.5B-Instruct"
+  revision: ""
   maxModelLen: 2048
   gpuMemoryUtilization: "0.20"
   enforceEager: true

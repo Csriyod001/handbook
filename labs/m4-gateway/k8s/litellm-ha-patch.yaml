@@ -1,0 +1,19 @@
+# ==============================================================================
+# Module 4 (M4) Optional HA Overlay: PodDisruptionBudget for LiteLLM Gateway
+# Recommended for HP Victus (32GB RAM) and Production clusters so Gateway itself
+# is not a Single Point of Failure (uses Redis + Postgres as shared state).
+#
+# Scale Deployment to 2 replicas & apply PDB:
+#   kubectl scale deployment/litellm-gateway -n ai-platform --replicas=2
+#   kubectl apply -f labs/m4-gateway/k8s/litellm-ha-patch.yaml
+# ==============================================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: litellm-gateway-pdb
+  namespace: ai-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: litellm-gateway

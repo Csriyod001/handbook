@@ -1,0 +1,35 @@
+# ==============================================================================
+# Portable Docker Compose Lab Runner (Docker-outside-of-Docker + Shared Cache)
+# Supports WSL2 (HP Victus 32GB/RTX 4050), Linux, and macOS.
+# ==============================================================================
+services:
+  lab:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    container_name: ai-infra-handbook-lab
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    environment:
+      - HF_HOME=/cache/huggingface
+      - VLLM_CACHE_ROOT=/tmp/vllm-cache
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/ai-infra-hf-cache:/cache/huggingface
+    ports:
+      - "8000:8000"
+      - "4000:4000"
+      - "3000:3000"
+      - "9090:9090"
+    command: ["bash", "-lc", "python3 scripts/make check-env && exec bash"]
+    # Optional GPU passthrough for WSL2 / Linux hosts with NVIDIA Container Toolkit (e.g., HP Victus RTX 4050 6GB):
+    # Uncomment the deploy block below or run `docker run --gpus all` directly on WSL2.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]

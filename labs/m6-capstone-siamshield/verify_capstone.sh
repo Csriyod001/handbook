@@ -39,6 +39,8 @@ fi
 
 CHAPTER_FILE="${REPO_ROOT}/chapters/06-capstone-siamshield-ai.md"
 K8S_STACK="${SCRIPT_DIR}/k8s/siamshield-platform.yaml"
+K8S_CRDS="${SCRIPT_DIR}/k8s/siamshield-crds.yaml"
+K8S_NETPOL="${REPO_ROOT}/labs/m4-gateway/k8s/network-policies.yaml"
 SIMULATOR="${SCRIPT_DIR}/src/siamshield_simulator.py"
 DEFENSE_GUIDE="${SCRIPT_DIR}/docs/interview-defense-guide.md"
 
@@ -140,15 +142,16 @@ grep -q "/cache/huggingface" "${K8S_STACK}"
 grep -q "VLLM_CACHE_ROOT" "${K8S_STACK}"
 grep -q "terminationGracePeriodSeconds: 60" "${K8S_STACK}"
 grep -q "runAsUser: 10001" "${K8S_STACK}"
-grep -q "siamshield-tier-realtime" "${K8S_STACK}"
-grep -q "siamshield-tier-batch" "${K8S_STACK}"
-grep -q "vllm-keda-scaler" "${K8S_STACK}"
+grep -q "siamshield-tier-realtime" "${K8S_CRDS}"
+grep -q "siamshield-tier-batch" "${K8S_CRDS}"
+grep -q "vllm-keda-scaler" "${K8S_CRDS}"
+grep -q "kind: NetworkPolicy" "${K8S_NETPOL}"
 if grep -q "/root/\.cache/huggingface" "${K8S_STACK}"; then
   echo "[FAIL] DoD #2: siamshield-platform.yaml must use /cache/huggingface, not /root/.cache/huggingface" >&2
   exit 1
 fi
 
-REPO_ROOT="${REPO_ROOT}" SIMULATOR="${SIMULATOR}" K8S_STACK="${K8S_STACK}" python3 - <<'PYEOF'
+REPO_ROOT="${REPO_ROOT}" SIMULATOR="${SIMULATOR}" K8S_STACK="${K8S_STACK}" K8S_CRDS="${K8S_CRDS}" python3 - <<'PYEOF'
 import ast
 import os
 import yaml
@@ -156,6 +159,7 @@ import yaml
 REPO_ROOT = os.environ["REPO_ROOT"]
 SIMULATOR = os.environ["SIMULATOR"]
 K8S_STACK = os.environ["K8S_STACK"]
+K8S_CRDS = os.environ["K8S_CRDS"]
 
 m4_cfg_path = f"{REPO_ROOT}/labs/m4-gateway/litellm_config.yaml"
 m4_pdpa_path = f"{REPO_ROOT}/labs/m4-gateway/mock_vllm_server/pdpa_guardrail.py"
@@ -169,8 +173,22 @@ with open(SIMULATOR, "r", encoding="utf-8") as f:
 
 with open(K8S_STACK, "r", encoding="utf-8") as f:
     docs = [d for d in yaml.safe_load_all(f) if d is not None]
-assert len(docs) == 24, f"Expected 24 K8s documents in siamshield-platform.yaml, got {len(docs)}"
+assert len(docs) == 15, f"Expected 15 Core K8s documents in siamshield-platform.yaml, got {len(docs)}"
 assert not any(d.get("kind") == "Secret" for d in docs), "Hardcoded Secret objects must NOT appear in siamshield-platform.yaml"
+
+with open(K8S_CRDS, "r", encoding="utf-8") as f:
+    crd_docs = [d for d in yaml.safe_load_all(f) if d is not None]
+assert len(crd_docs) == 9, f"Expected 9 CRD/EPP/KEDA documents in siamshield-crds.yaml, got {len(crd_docs)}"
+
+for svc_name, expected_app in [
+    ("vllm-primary-svc", "vllm-serving"),
+    ("vllm-secondary-svc", "vllm-serving"),
+    ("litellm-gateway-svc", "litellm-gateway"),
+]:
+    svc = next(d for d in docs if d.get("kind") == "Service" and d["metadata"]["name"] == svc_name)
+    assert svc["metadata"].get("labels", {}).get("app") == expected_app, (
+        f"Service {svc_name} must carry label app={expected_app} for ServiceMonitor discovery"
+    )
 
 pvc = next(d for d in docs if d.get("kind") == "PersistentVolumeClaim" and d["metadata"]["name"] == "hf-model-cache-pvc")
 assert "ReadWriteMany" in pvc["spec"]["accessModes"], "PVC must specify ReadWriteMany across Primary & Secondary"
@@ -205,22 +223,31 @@ for dep in (vllm_primary, vllm_secondary):
     assert c["startupProbe"]["httpGet"]["path"] == "/health"
     assert c["livenessProbe"]["httpGet"]["path"] == "/health"
 
-for req_dep in ["redis", "postgres", "litellm-gateway", "vllm-qwen-epp"]:
+for req_dep in ["redis", "postgres", "litellm-gateway"]:
     assert any(d.get("kind") == "Deployment" and d["metadata"]["name"] == req_dep for d in docs), f"Missing Deployment {req_dep}"
 
 assert any(d.get("kind") == "Job" and d["metadata"]["name"] == "litellm-init-virtual-keys" for d in docs)
-assert any(d.get("kind") == "ServiceAccount" and d["metadata"]["name"] == "vllm-qwen-epp-sa" for d in docs)
-assert any(d.get("kind") == "Role" and d["metadata"]["name"] == "vllm-qwen-epp-role" for d in docs)
-assert any(d.get("kind") == "RoleBinding" and d["metadata"]["name"] == "vllm-qwen-epp-binding" for d in docs)
+assert any(d.get("kind") == "ServiceAccount" and d["metadata"]["name"] == "vllm-qwen-epp-sa" for d in crd_docs)
+assert any(d.get("kind") == "Role" and d["metadata"]["name"] == "vllm-qwen-epp-role" for d in crd_docs)
+assert any(d.get("kind") == "RoleBinding" and d["metadata"]["name"] == "vllm-qwen-epp-binding" for d in crd_docs)
 
-epp_dep = next(d for d in docs if d.get("kind") == "Deployment" and d["metadata"]["name"] == "vllm-qwen-epp")
+epp_dep = next(d for d in crd_docs if d.get("kind") == "Deployment" and d["metadata"]["name"] == "vllm-qwen-epp")
 epp_spec = epp_dep["spec"]["template"]["spec"]
 assert epp_spec["serviceAccountName"] == "vllm-qwen-epp-sa"
 epp_container = epp_spec["containers"][0]
-assert epp_container["image"].endswith("epp:v0.3.0")
+assert epp_container["image"].endswith("epp:v1.0.0")
 assert "--pool-name=vllm-qwen-pool" in epp_container["args"]
 
-scaled = next(d for d in docs if d.get("kind") == "ScaledObject")
+pool_doc = next(d for d in crd_docs if d.get("kind") == "InferencePool")
+assert pool_doc["apiVersion"] == "inference.networking.k8s.io/v1"
+obj_docs = [d for d in crd_docs if d.get("kind") == "InferenceObjective"]
+assert len(obj_docs) == 2 and all(d["apiVersion"] == "llm-d.ai/v1" for d in obj_docs)
+assert all("poolRefs" in d["spec"] and "criticality" not in d["spec"] and "modelName" not in d["spec"] for d in obj_docs)
+rt_obj = next(d for d in obj_docs if "realtime" in d["metadata"]["name"])
+bt_obj = next(d for d in obj_docs if "batch" in d["metadata"]["name"])
+assert rt_obj["spec"]["priority"] > 0 and bt_obj["spec"]["priority"] < 0
+
+scaled = next(d for d in crd_docs if d.get("kind") == "ScaledObject")
 triggers = scaled["spec"]["triggers"]
 q_trig = next(t for t in triggers if "num_requests_waiting" in t["metadata"]["query"])
 kv_trig = next(t for t in triggers if "kv_cache_usage_perc" in t["metadata"]["query"])
@@ -244,13 +271,13 @@ else
   echo "[SKIP] 'kubectl' CLI not installed; Kubernetes dry-run/cluster validation skipped in static mode"
 fi
 
-if command -v docker >/dev/null 2>&1; then
-  echo "[OK] docker CLI detected ($(docker --version))"
+if command -v docker >/dev/null 2>&1 && docker --version >/dev/null 2>&1; then
+  echo "[OK] docker CLI detected ($(docker --version | head -n 1))"
 elif [[ "${VERIFY_MODE}" == "cluster" ]]; then
   echo "[FAIL] VERIFY_MODE=cluster requires 'docker' CLI installed" >&2
   exit 1
 else
-  echo "[SKIP] 'docker' CLI not installed; mock-vllm-server container build skipped in static mode"
+  echo "[SKIP] 'docker' CLI not active; mock-vllm-server container build skipped in static mode"
 fi
 
 python3 "${SIMULATOR}" > /dev/null

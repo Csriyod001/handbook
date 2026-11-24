@@ -201,8 +201,9 @@ else
   echo "[SKIP] kubectl not installed; skipping Kubernetes schema dry-run in VERIFY_MODE=static."
 fi
 
-# 5. Execute Chaos Incident Simulator & pytest (no chmod mutation)
+# 5. Execute Chaos Incident Simulator, Live Dry-Run & pytest (no chmod mutation)
 python3 "${CHAOS_SCRIPT}" --simulate > /dev/null
+python3 "${CHAOS_SCRIPT}" --live --dry-run > /dev/null
 pytest "${CHAOS_SCRIPT}" -v
 
 echo "=================================================================="

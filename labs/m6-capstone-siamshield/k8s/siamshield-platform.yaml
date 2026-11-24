@@ -1,12 +1,8 @@
 # ==============================================================================
-# Module 6 (M6 Capstone): Project SiamShield AI — Unified Kubernetes Stack (DoD #2)
-# Integrates:
-#   - Shared Model Cache PVC (`hf-model-cache-pvc` -> HF_HOME=/cache/huggingface)
-#   - Non-root SecurityContext (UID 10001) & Graceful Shutdown (terminationGracePeriodSeconds: 60)
-#   - Primary (`vllm-primary-svc:8000`) & Secondary (`vllm-secondary-svc:8000`) Serving Pools
-#   - LiteLLM AI Gateway (`litellm-gateway-svc:4000`), Redis (`redis-svc:6379`), Postgres (`postgres-svc:5432`)
-#   - K8s Gateway API Inference Extension (`InferencePool` & Two-Tier `InferenceModel`: Critical vs Sheddable)
-#   - KEDA Autoscaler (`vllm-keda-scaler` on `vllm:num_requests_waiting` & `vllm:kv_cache_usage_perc`)
+# Module 6 (M6 Capstone): Project SiamShield AI — Unified Core Kubernetes Stack
+# Note: CRD-dependent resources (EPP v1.0.0, GAIE v1 InferencePool, llm-d
+#       InferenceObjective, KEDA ScaledObject) are separated into `siamshield-crds.yaml`
+#       so `kubectl apply -f k8s/siamshield-platform.yaml` succeeds before CRDs.
 # ==============================================================================
 apiVersion: v1
 kind: Namespace
@@ -128,6 +124,9 @@ kind: Service
 metadata:
   name: vllm-primary-svc
   namespace: ai-platform
+  labels:
+    app: vllm-serving
+    role: primary
 spec:
   selector:
     app: vllm-serving
@@ -230,6 +229,9 @@ kind: Service
 metadata:
   name: vllm-secondary-svc
   namespace: ai-platform
+  labels:
+    app: vllm-serving
+    role: secondary
 spec:
   selector:
     app: vllm-serving
@@ -503,6 +505,10 @@ spec:
       containers:
         - name: redis
           image: redis:7.2-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 6379
               name: redis
@@ -559,6 +565,8 @@ spec:
       containers:
         - name: postgres
           image: postgres:16-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 5432
               name: postgres
@@ -577,12 +585,12 @@ spec:
               value: "litellm"
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "litellm", "-d", "litellm"]
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "litellm", "-d", "litellm"]
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             initialDelaySeconds: 15
             periodSeconds: 10
           volumeMounts:
@@ -633,7 +641,11 @@ spec:
     spec:
       containers:
         - name: litellm
-          image: ghcr.io/berriai/litellm:main-v1.55.0
+          image: ghcr.io/berriai/litellm:main-v1.72.0-stable
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           args:
             - "--config"
             - "/etc/litellm/litellm_config.yaml"
@@ -690,6 +702,8 @@ kind: Service
 metadata:
   name: litellm-gateway-svc
   namespace: ai-platform
+  labels:
+    app: litellm-gateway
 spec:
   selector:
     app: litellm-gateway
@@ -731,157 +745,3 @@ spec:
                 -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
                 -H "Content-Type: application/json" \
                 -d '{"key_alias":"batch-team","rpm_limit":10,"tpm_limit":25000,"models":["qwen2.5-7b-batch"]}' || true
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: vllm-qwen-epp-sa
-  namespace: ai-platform
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: vllm-qwen-epp-role
-  namespace: ai-platform
-rules:
-  - apiGroups: [""]
-    resources: ["pods", "services"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["discovery.k8s.io"]
-    resources: ["endpointslices"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["inference.networking.x-k8s.io"]
-    resources: ["inferencepools", "inferencemodels"]
-    verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: vllm-qwen-epp-binding
-  namespace: ai-platform
-subjects:
-  - kind: ServiceAccount
-    name: vllm-qwen-epp-sa
-    namespace: ai-platform
-roleRef:
-  kind: Role
-  name: vllm-qwen-epp-role
-  apiGroup: rbac.authorization.k8s.io
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: vllm-qwen-epp
-  namespace: ai-platform
-  labels:
-    app: vllm-qwen-epp
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: vllm-qwen-epp
-  template:
-    metadata:
-      labels:
-        app: vllm-qwen-epp
-    spec:
-      serviceAccountName: vllm-qwen-epp-sa
-      containers:
-        - name: epp
-          image: registry.k8s.io/gateway-api-inference-extension/epp:v0.3.0
-          args:
-            - "--pool-name=vllm-qwen-pool"
-            - "--pool-namespace=ai-platform"
-            - "--grpc-port=9002"
-          ports:
-            - containerPort: 9002
-              name: grpc
-          resources:
-            requests:
-              cpu: "50m"
-              memory: "64Mi"
-            limits:
-              cpu: "200m"
-              memory: "128Mi"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: vllm-qwen-epp
-  namespace: ai-platform
-  labels:
-    app: vllm-qwen-epp
-spec:
-  selector:
-    app: vllm-qwen-epp
-  ports:
-    - name: grpc-ext-proc
-      port: 9002
-      targetPort: 9002
-      appProtocol: kubernetes.io/h2c
----
-apiVersion: inference.networking.x-k8s.io/v1alpha2
-kind: InferencePool
-metadata:
-  name: vllm-qwen-pool
-  namespace: ai-platform
-spec:
-  targetPortNumber: 8000
-  selector:
-    inference-pool: vllm-qwen-pool
-  extensionRef:
-    name: vllm-qwen-epp
----
-apiVersion: inference.networking.x-k8s.io/v1alpha2
-kind: InferenceModel
-metadata:
-  name: siamshield-tier-realtime
-  namespace: ai-platform
-spec:
-  modelName: qwen2.5-7b
-  criticality: Critical
-  poolRef:
-    name: vllm-qwen-pool
----
-apiVersion: inference.networking.x-k8s.io/v1alpha2
-kind: InferenceModel
-metadata:
-  name: siamshield-tier-batch
-  namespace: ai-platform
-spec:
-  modelName: qwen2.5-7b-batch
-  criticality: Sheddable
-  poolRef:
-    name: vllm-qwen-pool
----
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: vllm-keda-scaler
-  namespace: ai-platform
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: vllm-primary
-  pollingInterval: 15
-  cooldownPeriod: 120
-  minReplicaCount: 1
-  maxReplicaCount: 3
-  triggers:
-    - type: prometheus
-      name: vllm-waiting-requests-queue
-      metricType: AverageValue
-      metadata:
-        serverAddress: http://prometheus-operated.monitoring.svc.cluster.local:9090
-        metricName: vllm_waiting_requests_queue
-        query: sum(vllm:num_requests_waiting{namespace="ai-platform",pod=~"vllm-primary-.*"})
-        threshold: "5"
-    - type: prometheus
-      name: vllm-kv-cache-usage-ratio
-      metricType: Value
-      metadata:
-        serverAddress: http://prometheus-operated.monitoring.svc.cluster.local:9090
-        metricName: vllm_kv_cache_usage_ratio
-        query: avg(vllm:kv_cache_usage_perc{namespace="ai-platform",pod=~"vllm-primary-.*"})
-        threshold: "0.80"

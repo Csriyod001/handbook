@@ -71,6 +71,19 @@ MODULE_0_RESOURCES: list[tuple[str, list[str], str]] = [
         ["../SPEC_AND_STYLE_GUIDE.md"],
         "Canonical ports, model IDs, `HF_HOME=/cache/huggingface`, V1 metrics (~30 นาที | Local)",
     ),
+    (
+        "Portability Guide & Optional AWS Cloud Track (`g6.xlarge` Spot L4)",
+        ["../PORTABILITY_AND_QUICKSTART.md", "../labs/optional-cloud-aws/README.md"],
+        "DevContainer/Compose setup, Offline Reading, AWS S3/ECR/Budgets & Dead-Man's Switch (~1.5 ชั่วโมง | ฟรี / \\$10–\\$30 AWS)",
+    ),
+    (
+        "2025–2026 Core Books (*AI Systems Performance Engineering*, *AI Engineering*, *Ultra-Scale Playbook*, *How to Scale Your Model*)",
+        [
+            "https://huggingface.co/spaces/nanotron/ultrascale-playbook",
+            "https://jax-ml.github.io/scaling-book/",
+        ],
+        "Roofline math, Disaggregated PD, Tensor/Pipeline Parallelism & Eval Gates (เสริมเชิงลึก)",
+    ),
 ]
 
 FIVE_DOD_ROWS: list[tuple[str, str, str, str, str]] = [
@@ -105,7 +118,7 @@ FIVE_DOD_ROWS: list[tuple[str, str, str, str, str]] = [
     (
         "**DoD #5**",
         "Mid-Level Architecture Defense & Interview Readiness",
-        "[`labs/m6-capstone-siamshield/docs/interview-defense-guide.md`](../labs/m6-capstone-siamshield/docs/interview-defense-guide.md)<br>คำถาม-เฉลย 28 ข้อในบทที่ 1–6",
+        "[`labs/m6-capstone-siamshield/docs/interview-defense-guide.md`](../labs/m6-capstone-siamshield/docs/interview-defense-guide.md)<br>คำถาม-เฉลย 29 ข้อในบทที่ 1–6",
         "ตอบคำถามเชิงสถาปัตยกรรม การคำนวณคอขวด (`Prefill` Compute vs `Decode` Memory Bandwidth), FinOps Break-even และการกู้คืนระบบได้อย่างมีเหตุผลเชิงวิศวกรรม",
         "15 คะแนน",
     ),
