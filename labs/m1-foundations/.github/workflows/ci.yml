@@ -60,7 +60,7 @@ jobs:
           docker rm -f verify-ro
 
       - name: Run Trivy Vulnerability Scanner (Block on CRITICAL CVEs)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: "ai-inference-service:${{ github.sha }}"
           format: "table"
@@ -70,7 +70,7 @@ jobs:
           severity: "CRITICAL"
 
       - name: Run Trivy Misconfiguration Scan on Dockerfile & OpenTofu
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: "config"
           scan-ref: "labs/m1-foundations"

@@ -262,8 +262,15 @@ assert "server_id=" not in kv_trig["metadata"]["query"]
 PYEOF
 
 if command -v kubectl >/dev/null 2>&1; then
-  kubectl apply --dry-run=client --validate=false -f "${K8S_STACK}" >/dev/null
-  echo "[OK] kubectl client dry-run passed on ${K8S_STACK}."
+  if kubectl cluster-info --request-timeout=3s >/dev/null 2>&1; then
+    kubectl apply --dry-run=client --validate=false -f "${K8S_STACK}" >/dev/null
+    echo "[OK] kubectl client dry-run passed on ${K8S_STACK}."
+  elif [[ "${VERIFY_MODE}" == "cluster" ]]; then
+    echo "[FAIL] VERIFY_MODE=cluster requires a reachable Kubernetes cluster." >&2
+    exit 1
+  else
+    echo "[SKIP] kubectl detected but no reachable cluster; Kubernetes dry-run skipped in VERIFY_MODE=static."
+  fi
 elif [[ "${VERIFY_MODE}" == "cluster" ]]; then
   echo "[FAIL] VERIFY_MODE=cluster requires 'kubectl' CLI installed" >&2
   exit 1

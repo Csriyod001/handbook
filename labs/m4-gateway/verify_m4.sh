@@ -201,7 +201,14 @@ else
 fi
 
 if command -v kubectl >/dev/null 2>&1; then
-  kubectl apply --dry-run=client -f "${K8S_MANIFEST}" >/dev/null 2>&1 || echo "[WARN] kubectl client dry-run skipped/warned (CRDs may be absent locally)."
+  if kubectl cluster-info --request-timeout=3s >/dev/null 2>&1; then
+    kubectl apply --dry-run=client -f "${K8S_MANIFEST}" >/dev/null 2>&1 || echo "[WARN] kubectl client dry-run skipped/warned (CRDs may be absent locally)."
+  elif [[ "${VERIFY_MODE}" == "cluster" ]]; then
+    echo "[FAIL] VERIFY_MODE=cluster requires a reachable Kubernetes cluster." >&2
+    exit 1
+  else
+    echo "[SKIP] kubectl detected but no reachable cluster; Kubernetes dry-run skipped in VERIFY_MODE=static."
+  fi
 elif [[ "${VERIFY_MODE}" == "cluster" ]]; then
   echo "[FAIL] kubectl is required when VERIFY_MODE=cluster." >&2
   exit 1

@@ -147,11 +147,11 @@ resource "aws_iam_instance_profile" "gpu_node_profile" {
 
 # 4. AWS Budgets Cost Alerting ($5 / $15 / $25 thresholds on $30 cap)
 resource "aws_budgets_budget" "monthly_cap" {
-  name              = "${var.project_prefix}-monthly-cap"
-  budget_type       = "COST"
-  limit_amount      = tostring(var.monthly_budget_limit_usd)
-  limit_unit        = "USD"
-  time_unit         = "MONTHLY"
+  name         = "${var.project_prefix}-monthly-cap"
+  budget_type  = "COST"
+  limit_amount = tostring(var.monthly_budget_limit_usd)
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
 
   notification {
     comparison_operator        = "GREATER_THAN"
